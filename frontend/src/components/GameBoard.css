@@ -1,0 +1,133 @@
+.game-board {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.game-board.loading,
+.game-board.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: white;
+  font-size: 24px;
+}
+
+.game-header {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.game-header h1 {
+  margin: 0;
+  color: #333;
+}
+
+.game-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.rename-area {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rename-area input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.rename-area button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #667eea;
+  color: white;
+  cursor: pointer;
+}
+
+.rename-area button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.status.waiting {
+  background: #ffc107;
+  color: #333;
+}
+
+.status.active {
+  background: #28a745;
+  color: white;
+}
+
+.status.finished {
+  background: #dc3545;
+  color: white;
+}
+
+.winner {
+  font-weight: 600;
+  color: #333;
+}
+
+.leave-btn {
+  padding: 8px 16px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.leave-btn:hover {
+  background: #c82333;
+}
+
+.game-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.players-area {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.selection-indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

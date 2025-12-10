@@ -1,0 +1,37 @@
+from flask import Flask
+from flask_socketio import SocketIO
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_cors import CORS
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+db = SQLAlchemy()
+socketio = SocketIO(cors_allowed_origins=os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(','))
+migrate = Migrate()
+
+
+def create_app():
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://user:password@localhost/nerts_db')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Initialize extensions
+    db.init_app(app)
+    CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')}})
+    socketio.init_app(app, cors_allowed_origins=os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(','))
+    migrate.init_app(app, db)
+
+    # Register blueprints
+    from app.api import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api')
+
+    # Register socketio events
+    from app.websocket import register_socketio_events
+    register_socketio_events(socketio)
+
+    return app
+

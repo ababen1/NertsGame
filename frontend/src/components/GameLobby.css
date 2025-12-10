@@ -1,0 +1,134 @@
+.lobby {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.lobby-header h1 {
+  color: #333;
+  margin: 0;
+}
+
+.create-game-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.create-game-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.create-game-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.games-list {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.games-list h2 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.no-games {
+  text-align: center;
+  color: #666;
+  padding: 40px;
+  font-size: 18px;
+}
+
+.game-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  margin-bottom: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  transition: border-color 0.3s;
+}
+
+.game-card:hover {
+  border-color: #667eea;
+}
+
+.game-info h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.game-info p {
+  margin: 5px 0;
+  color: #666;
+}
+
+.game-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.join-btn,
+.start-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.join-btn {
+  background: #28a745;
+  color: white;
+}
+
+.start-btn {
+  background: #ffc107;
+  color: #333;
+}
+
+.join-btn:hover:not(:disabled),
+.start-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.join-btn:disabled,
+.start-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.full-badge {
+  padding: 10px 20px;
+  background: #dc3545;
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+}
+

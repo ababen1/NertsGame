@@ -1,0 +1,227 @@
+.player-area {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e0e0e0;
+}
+
+.player-area.current-player {
+  border-color: #667eea;
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.3);
+}
+
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.player-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.player-score {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 18px;
+}
+
+.deck-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.deck-button {
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.deck-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.deck-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.deck-size {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.playable-card {
+  font-size: 32px;
+  font-weight: 700;
+  padding: 15px 20px;
+  background: white;
+  border: 3px solid #667eea;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.playable-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.playable-card.selected {
+  border-color: #ffc107;
+  background: #fff9e6;
+  transform: scale(1.1);
+}
+
+.nerts-section {
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.nerts-pile {
+  margin-bottom: 10px;
+}
+
+.nerts-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.nerts-card {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.nerts-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nerts-card.selected {
+  border-color: #ffc107;
+  background: #fff9e6;
+}
+
+.nerts-button {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.nerts-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.personal-stacks {
+  margin-top: 15px;
+}
+
+.personal-stacks h4 {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.stacks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.personal-stack {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: 2px dashed #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.personal-stack:hover {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+
+.stack-card {
+  font-size: 24px;
+  font-weight: 700;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+.stack-card.selected {
+  border-color: #ffc107;
+  background: #fff9e6;
+  transform: scale(1.1);
+}
+
+.empty-stack {
+  color: #ccc;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.opponent-view {
+  color: #666;
+  text-align: center;
+}
+
+.opponent-stacks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.opponent-stack {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  user-select: none;
+}
+

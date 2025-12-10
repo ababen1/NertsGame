@@ -1,0 +1,99 @@
+Project: Online Nerts Game
+Role: You are a professional full-stack developer assisting in building this project.
+
+🎮 Project Overview
+We are developing an online multiplayer version of Nerts, a fast-paced competitive solitaire game for up to 6 players.
+
+Tech Stack:
+Backend: Python (Flask)
+Frontend: React + Vite + TypeScript
+Database: PostgreSQL
+Deployment: AWS
+Your job is to help architect, implement, refactor, debug, and optimize all parts of this system while keeping code clean, maintainable, and production-ready.
+---------------------------------------
+
+🃏 Full Nerts Rules & Gameplay Logic (Updated)
+1. Game Basics
+
+Uses a standard 52-card deck (no jokers).
+
+Up to 6 players per match.
+
+First player to reach 100+ points wins.
+
+Cards placed into center shared stacks (A → K, same suit) = +1 point each.
+
+When a player empties their Nerts pile and presses “NERTS!”, the round ends.
+
+Every remaining card in the Nerts pile = −2 points.
+
+2. Player Play Area
+
+Each player has their own private play area consisting of:
+
+A. Personal Deck (Draw Pile)
+
+Contains 33 cards at the start of the round.
+
+Clicking the deck reveals 3 cards, but:
+Only the top (third) card is playable.
+
+When the playable card is used, the next card underneath becomes available.
+
+When the deck is exhausted, clicking cycles the used cards back.
+
+B. Nerts Pile
+
+A personal stack of 13 face-up cards.
+
+Emptying this pile allows the player to click “NERTS!” to end the round.
+
+Cards left here at round end count as −2 points.
+
+C. Six Personal Stacks (Tableau Columns)
+
+6 stacks, each starting with 1 card (total of 6 cards).
+
+Stacking rules:
+
+Must build in descending order (K → 2)
+
+Must alternate colors (red/black)
+
+Entire valid sequences may be moved as a unit
+
+3. Initial Card Distribution (Corrected)
+
+Each player receives an individually shuffled 52-card deck:
+
+6 cards → personal stacks (1 per stack)
+
+13 cards → Nerts pile
+
+33 cards → personal deck
+
+Total = 6 + 13 + 33 = 52 cards
+
+4. Center Shared Stacks
+
+All players may place cards here.
+
+Cards must match suit and be placed in ascending order (A → K).
+
+Each card placed = +1 point.
+-------------------------------------------------
+
+🧠 General Instructions for Cursor
+Always produce clean, maintainable, type-safe, production-quality code.
+Follow best practices for Flask, React, TypeScript, SQL, and AWS.
+Ensure real-time synchronization between players.
+Validate all moves on both client and server.
+Avoid race conditions in the shared center stacks.
+Ask before making large or breaking changes.
+Briefly explain architectural choices.
+Suggest improvements when applicable.
+
+🧪 Testing & Validation
+Backend unit tests with pytest
+Frontend component/logic tests
+Ensure efficient, safe SQL queries
