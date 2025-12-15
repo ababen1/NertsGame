@@ -9,6 +9,7 @@ function App() {
   const [currentGameId, setCurrentGameId] = useState<number | null>(null);
   const [player, setPlayer] = useState<PlayerProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
   // Load player from device (localStorage) on start
   useEffect(() => {
@@ -17,6 +18,13 @@ function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved) as PlayerProfile;
+          // Offline profile (id=0) should not hit backend
+          if (parsed.id === 0) {
+            setPlayer(parsed);
+            setIsOffline(true);
+            setCurrentGameId(1);
+            return;
+          }
           const res = await fetch(`/api/players/${parsed.id}`);
           if (res.ok) {
             const data = await res.json();
@@ -38,9 +46,11 @@ function App() {
     localStorage.setItem("nertsPlayer", JSON.stringify(offlinePlayer));
     setLoadingProfile(false);
     setCurrentGameId(1);
+    setIsOffline(true);
   };
 
   const handleLogin = async (username: string) => {
+    setIsOffline(false);
     const response = await fetch("/api/players", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,6 +69,13 @@ function App() {
   };
 
   const handleRename = async (username: string) => {
+    if (isOffline) {
+      // Offline mode: just update local profile
+      const profile = { id: player?.id ?? 0, username };
+      setPlayer(profile);
+      localStorage.setItem("nertsPlayer", JSON.stringify(profile));
+      return;
+    }
     if (!player) return;
     const response = await fetch(`/api/players/${player.id}`, {
       method: "PATCH",
@@ -131,8 +148,15 @@ function App() {
         playerId={player.id}
         playerName={player.username}
         onRename={handleRename}
-        onLeaveGame={() => setCurrentGameId(null)}
-        isOffline={player.id === 0}
+        onLeaveGame={() => {
+          if (isOffline || player.id === 0) {
+            setPlayer(null);
+            setIsOffline(false);
+            localStorage.removeItem("nertsPlayer");
+          }
+          setCurrentGameId(null);
+        }}
+        isOffline={isOffline || player.id === 0}
       />
     </div>
   );
@@ -174,7 +198,13 @@ function LoginForm({
       <button type="submit" disabled={loading}>
         {loading ? "Creating..." : "Start Playing"}
       </button>
-      <button onClick={() => handlePlayOffline()}>Play offline </button>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => handlePlayOffline()}
+      >
+        Play single-player (offline)
+      </button>
     </form>
   );
 }

@@ -2,12 +2,23 @@ import { useEffect, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { GameState } from "../types/game";
 
-export function useGameSocket(gameId: number, playerId: number) {
+export function useGameSocket(
+  gameId: number,
+  playerId: number,
+  enabled: boolean = true
+) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
+    if (!enabled) {
+      setSocket(null);
+      setConnected(false);
+      setGameState(null);
+      return;
+    }
+
     const newSocket = io("http://localhost:5000", {
       transports: ["websocket"],
     });
@@ -43,7 +54,7 @@ export function useGameSocket(gameId: number, playerId: number) {
     return () => {
       newSocket.close();
     };
-  }, [gameId, playerId]);
+  }, [gameId, playerId, enabled]);
 
   const drawDeck = useCallback(() => {
     if (socket) {

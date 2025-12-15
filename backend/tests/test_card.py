@@ -42,19 +42,20 @@ def test_card_center_stack_validation():
     """Test center stack placement validation"""
     # Can place Ace on empty stack
     ace = Card(Suit.HEARTS, Rank.ACE)
-    assert ace.can_play_on_center_stack(None) == True
+    assert ace.can_play_on_center_stack(None, Suit.HEARTS) == True
+    assert ace.can_play_on_center_stack(None, Suit.CLUBS) == False
     
     # Can place 2 on Ace
     two = Card(Suit.HEARTS, Rank.TWO)
-    assert two.can_play_on_center_stack(ace) == True
+    assert two.can_play_on_center_stack(ace, Suit.HEARTS) == True
     
     # Cannot place 3 on Ace (must be sequential)
     three = Card(Suit.HEARTS, Rank.THREE)
-    assert three.can_play_on_center_stack(ace) == False
+    assert three.can_play_on_center_stack(ace, Suit.HEARTS) == False
     
     # Cannot place different suit
     spade_two = Card(Suit.SPADES, Rank.TWO)
-    assert spade_two.can_play_on_center_stack(ace) == False
+    assert spade_two.can_play_on_center_stack(ace, Suit.HEARTS) == False
 
 
 def test_card_personal_stack_validation():

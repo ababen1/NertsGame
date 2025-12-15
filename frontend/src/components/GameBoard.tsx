@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useGameSocket } from "../hooks/useGameSocket";
-import { GameState, Card, Suit } from "../types/game";
+import { useOfflinePractice } from "../hooks/useOfflinePractice";
 import PlayerArea from "./PlayerArea";
 import CenterStacks from "./CenterStacks";
 import "./GameBoard.css";
@@ -22,10 +22,14 @@ export default function GameBoard({
   onLeaveGame,
   isOffline,
 }: GameBoardProps) {
-  const { gameState, connected, drawDeck, playCard, callNerts, moveStack } =
-    useGameSocket(gameId, playerId);
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const [selectedStack, setSelectedStack] = useState<number | null>(null);
+  const online = useGameSocket(gameId, playerId, !isOffline);
+  const practice = useOfflinePractice(playerId, playerName);
+  const gameState = isOffline ? practice.gameState : online.gameState;
+  const connected = isOffline ? true : online.connected;
+  const drawDeck = isOffline ? practice.drawDeck : online.drawDeck;
+  const playCard = isOffline ? practice.playCard : online.playCard;
+  const callNerts = isOffline ? practice.callNerts : online.callNerts;
+  const moveStack = isOffline ? practice.moveStack : online.moveStack;
   const [editingName, setEditingName] = useState(playerName);
   const [renameSaving, setRenameSaving] = useState(false);
 
@@ -52,60 +56,12 @@ export default function GameBoard({
     );
   }
 
-  const handleCardClick = (card: Card, source: string, index?: number) => {
-    if (selectedCard && selectedCard === card) {
-      // Deselect
-      setSelectedCard(null);
-      setSelectedStack(null);
-      return;
-    }
-
-    // Select card
-    setSelectedCard(card);
-    if (index !== undefined) {
-      setSelectedStack(index);
-    }
-  };
-
-  const handlePlayAreaClick = (
-    targetType: "center" | "personal",
-    target: string | number
-  ) => {
-    if (!selectedCard) return;
-
-    if (targetType === "center") {
-      playCard(selectedCard, "center", target as string);
-    } else if (targetType === "personal") {
-      playCard(selectedCard, "personal", target as number);
-    }
-
-    setSelectedCard(null);
-    setSelectedStack(null);
-  };
-
-  const handleStackClick = (stackIndex: number) => {
-    if (selectedCard && selectedStack !== null) {
-      // Moving from one stack to another
-      moveStack(selectedStack, stackIndex);
-      setSelectedCard(null);
-      setSelectedStack(null);
-    } else if (selectedCard) {
-      // Playing card to stack
-      handlePlayAreaClick("personal", stackIndex);
-    } else {
-      // Select top card of stack
-      const stack = currentPlayer.personal_stacks[stackIndex];
-      if (stack && stack.length > 0) {
-        handleCardClick(stack[stack.length - 1], "stack", stackIndex);
-      }
-    }
-  };
-
   return (
     <div className="game-board">
       <div className="game-header">
         <h1>
-          Game #{gameId} - Round {gameState.current_round}
+          {isOffline ? "Practice Mode" : `Game #${gameId}`} - Round{" "}
+          {gameState.current_round}
         </h1>
         <div className="game-info">
           <div className="rename-area">
@@ -144,9 +100,16 @@ export default function GameBoard({
       <div className="game-content">
         <CenterStacks
           centerStacks={gameState.center_stacks}
-          onStackClick={(suit) => {
-            if (selectedCard) {
-              handlePlayAreaClick("center", suit);
+          onCardDrop={(payload) => {
+            if (!payload) return;
+            if (
+              payload.source === "personal" &&
+              payload.count &&
+              payload.count > 1
+            )
+              return; // center accepts single card
+            if (payload.card) {
+              playCard(payload.card, "center", payload.targetSuit as any);
             }
           }}
         />
@@ -157,21 +120,26 @@ export default function GameBoard({
               key={pid}
               player={player}
               isCurrentPlayer={parseInt(pid) === playerId}
-              selectedCard={selectedCard}
-              onCardClick={handleCardClick}
-              onStackClick={handleStackClick}
               onDrawDeck={drawDeck}
               onCallNerts={callNerts}
+              onDropToStack={(stackIdx, payload) => {
+                if (!payload) return;
+                if (
+                  payload.source === "personal" &&
+                  payload.fromStack !== undefined
+                ) {
+                  moveStack(payload.fromStack, stackIdx, payload.count || 1);
+                  return;
+                }
+                if (payload.card) {
+                  playCard(payload.card, "personal", stackIdx);
+                }
+              }}
+              onDragStartPayload={(p) => p}
             />
           ))}
         </div>
       </div>
-
-      {selectedCard && (
-        <div className="selection-indicator">
-          Selected: {selectedCard.display}
-        </div>
-      )}
     </div>
   );
 }

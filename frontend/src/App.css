@@ -58,3 +58,14 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.login-form button.secondary {
+  background: #f1f3f5;
+  color: #333;
+  border: 1px solid #e0e0e0;
+}
+
+.login-form button.secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}

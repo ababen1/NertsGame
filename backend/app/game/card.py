@@ -79,11 +79,13 @@ class Card:
             raise ValueError(f"Invalid rank value: {rank_value}")
         return cls(suit, rank)
 
-    def can_play_on_center_stack(self, top_card: Optional['Card']) -> bool:
-        """Check if this card can be played on a center stack (A→K, same suit)"""
+    def can_play_on_center_stack(self, top_card: Optional['Card'], target_suit: Suit) -> bool:
+        """Check if this card can be played on a center stack (A→K, same suit). Must start with matching Ace."""
+        if self.suit != target_suit:
+            return False
         if top_card is None:
             return self.rank == Rank.ACE
-        return self.suit == top_card.suit and int(self.rank) == int(top_card.rank) + 1
+        return int(self.rank) == int(top_card.rank) + 1
 
     def can_play_on_personal_stack(self, top_card: Optional['Card']) -> bool:
         """Check if this card can be played on a personal stack (K→2, alternating colors)"""

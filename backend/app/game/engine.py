@@ -129,11 +129,9 @@ class GameEngine:
         if not player.deck:
             if not player.deck_used:
                 return False  # No cards available
+            # recycle in the same order they were used (no shuffle)
             player.deck = player.deck_used
             player.deck_used = []
-            # Shuffle when recycling
-            import random
-            random.shuffle(player.deck)
         
         # Draw up to 3 cards (or remaining cards)
         cards_to_draw = min(3, len(player.deck))
@@ -185,7 +183,7 @@ class GameEngine:
         stack = self.center_stacks[suit]
         top_card = stack[-1] if stack else None
         
-        if not card.can_play_on_center_stack(top_card):
+        if not card.can_play_on_center_stack(top_card, suit):
             return False, "Invalid move: card cannot be played on this center stack"
         
         # Remove card from player's area
