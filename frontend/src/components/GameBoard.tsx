@@ -102,12 +102,7 @@ export default function GameBoard({
           centerStacks={gameState.center_stacks}
           onCardDrop={(payload) => {
             if (!payload) return;
-            if (
-              payload.source === "personal" &&
-              payload.count &&
-              payload.count > 1
-            )
-              return; // center accepts single card
+            if (payload.count && payload.count > 1) return; // center accepts single card
             if (payload.card) {
               playCard(payload.card, "center", payload.targetSuit as any);
             }

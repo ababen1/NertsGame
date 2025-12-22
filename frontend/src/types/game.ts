@@ -8,6 +8,11 @@ export interface Card {
   display: string;
 }
 
+export interface CenterStack {
+  suit: Suit;
+  cards: Card[];
+}
+
 export interface PlayerState {
   player_id: number;
   position: number;
