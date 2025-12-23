@@ -1,5 +1,6 @@
-import { Card, Suit } from "../types/game";
+import { Card, Suit, CenterStack } from "../types/game";
 import { cardAssetPath } from "../utils/cardAsset";
+import { isDroppable, DropTarget, DragPayload } from "../utils/solitiareFuncs";
 import "./CenterStacks.css";
 
 interface CenterStacksProps {
@@ -8,14 +9,6 @@ interface CenterStacksProps {
   };
   onCardDrop: (payload: DragPayload | null) => void;
 }
-
-type DragPayload = {
-  source: "deck" | "nerts" | "personal";
-  fromStack?: number;
-  count?: number;
-  card?: Card;
-  targetSuit?: Suit;
-};
 
 const suitSymbols: { [key in Suit]: string } = {
   hearts: "♥",
@@ -61,10 +54,25 @@ export default function CenterStacks({
               onDrop={(e) => {
                 e.preventDefault();
                 const payload = parsePayload(e);
-                if (payload) {
-                  payload.targetSuit = suit;
+                if (!payload) {
+                  return;
                 }
-                onCardDrop(payload);
+                // Convert centerStacks format to CenterStack for validation
+                const centerStack: CenterStack = {
+                  suit,
+                  cards: stack,
+                };
+                const target: DropTarget = { type: "center", stack: centerStack };
+                if (!isDroppable(payload, target)) {
+                  // Invalid drop - ignore it (card stays in place)
+                  return;
+                }
+                // Add targetSuit for the handler
+                const payloadWithTarget: DragPayload & { targetSuit?: Suit } = {
+                  ...payload,
+                  targetSuit: suit,
+                };
+                onCardDrop(payloadWithTarget);
               }}
             >
               <div className="stack-label" style={{ color: suitColors[suit] }}>

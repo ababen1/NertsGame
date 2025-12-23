@@ -2,6 +2,7 @@ import { Card } from "../../types/game";
 import { cardAssetPath } from "../../utils/cardAsset";
 import { DragPayload } from "./types";
 import "./PlayerArea.css";
+import { isPickable, PickContext } from "../../utils/solitiareFuncs";
 
 interface NertsPileProps {
   nertsPile: Card[] | undefined;
@@ -9,6 +10,7 @@ interface NertsPileProps {
   canCallNerts: boolean;
   onCallNerts: () => void;
   onDragStartPayload: (payload: DragPayload) => DragPayload;
+  pickContext: PickContext;
 }
 
 export default function NertsPile({
@@ -17,6 +19,7 @@ export default function NertsPile({
   canCallNerts,
   onCallNerts,
   onDragStartPayload,
+  pickContext,
 }: NertsPileProps) {
   return (
     <div className="nerts-section">
@@ -29,19 +32,25 @@ export default function NertsPile({
           <div className="nerts-cards">
             {(() => {
               const top = nertsPile[nertsPile.length - 1];
+              const payload: DragPayload = {
+                source: "nerts",
+                card: top,
+              };
+              const isPickablePayload = isPickable(payload, pickContext);
               return (
                 <img
                   key="nerts-top"
                   className="card-img nerts-card small"
-                  draggable
+                  draggable={isPickablePayload}
                   onDragStart={(e) => {
-                    const payload = onDragStartPayload({
-                      source: "nerts",
-                      card: top,
-                    });
+                    if (!isPickablePayload) {
+                      e.preventDefault();
+                      return;
+                    }
+                    const finalPayload = onDragStartPayload(payload);
                     e.dataTransfer.setData(
                       "application/json",
-                      JSON.stringify(payload)
+                      JSON.stringify(finalPayload)
                     );
                   }}
                   src={cardAssetPath(top)}

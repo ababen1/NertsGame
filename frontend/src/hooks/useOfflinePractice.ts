@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, GameState, Rank, Suit } from "../types/game";
+import { isRedSuit } from "../utils/solitiareFuncs";
 
 const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
 const RANKS: Rank[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
@@ -27,10 +28,6 @@ function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
-function isRed(suit: Suit) {
-  return suit === "hearts" || suit === "diamonds";
-}
-
 function rankDisplay(rank: Rank, suit: Suit) {
   const displayMap: Record<number, string> = {
     1: "A",
@@ -54,7 +51,9 @@ function canPlayOnCenter(
 
 function canPlayOnPersonal(card: Card, top: Card | undefined | null) {
   if (!top) return true;
-  return card.rank === top.rank - 1 && isRed(card.suit) !== isRed(top.suit);
+  return (
+    card.rank === top.rank - 1 && isRedSuit(card.suit) !== isRedSuit(top.suit)
+  );
 }
 
 export function useOfflinePractice(playerId: number, _playerName: string) {

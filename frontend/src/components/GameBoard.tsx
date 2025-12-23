@@ -104,7 +104,7 @@ export default function GameBoard({
             if (!payload) return;
             if (payload.count && payload.count > 1) return; // center accepts single card
             if (payload.card) {
-              playCard(payload.card, "center", payload.targetSuit as any);
+              playCard(payload.card, "center", payload.card.suit);
             }
           }}
         />

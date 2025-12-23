@@ -4,6 +4,7 @@ import { DragPayload } from "./types";
 import NertsPile from "./NertsPile";
 import PlayArea from "./PlayArea";
 import "./PlayerArea.css";
+import { isPickable, PickContext } from "../../utils/solitiareFuncs";
 
 interface PlayerAreaProps {
   player: PlayerState;
@@ -29,6 +30,12 @@ export default function PlayerArea({
 
   const canCallNerts = player.nerts_pile_count === 0;
 
+  const pickContext: PickContext = {
+    personalStacks: player.personal_stacks,
+    nertsPile: player.nerts_pile,
+    deckTopCard: playableCard,
+  };
+
   return (
     <div className={`player-area ${isCurrentPlayer ? "current-player" : ""}`}>
       <div className="player-header">
@@ -45,6 +52,7 @@ export default function PlayerArea({
               canCallNerts={canCallNerts}
               onCallNerts={onCallNerts}
               onDragStartPayload={onDragStartPayload}
+              pickContext={pickContext}
             />
 
             {/* Personal Deck */}
@@ -60,24 +68,33 @@ export default function PlayerArea({
                   className="card-img small"
                 />
               </button>
-              {playableCard && (
-                <img
-                  className="card-img playable-card small"
-                  draggable
-                  onDragStart={(e) => {
-                    const payload = onDragStartPayload({
-                      source: "deck",
-                      card: playableCard,
-                    });
-                    e.dataTransfer.setData(
-                      "application/json",
-                      JSON.stringify(payload)
-                    );
-                  }}
-                  src={cardAssetPath(playableCard)}
-                  alt={playableCard.display}
-                />
-              )}
+              {playableCard &&
+                (() => {
+                  const payload: DragPayload = {
+                    source: "deck",
+                    card: playableCard,
+                  };
+                  const isPickablePayload = isPickable(payload, pickContext);
+                  return (
+                    <img
+                      className="card-img playable-card small"
+                      draggable={isPickablePayload}
+                      onDragStart={(e) => {
+                        if (!isPickablePayload) {
+                          e.preventDefault();
+                          return;
+                        }
+                        const finalPayload = onDragStartPayload(payload);
+                        e.dataTransfer.setData(
+                          "application/json",
+                          JSON.stringify(finalPayload)
+                        );
+                      }}
+                      src={cardAssetPath(playableCard)}
+                      alt={playableCard.display}
+                    />
+                  );
+                })()}
             </div>
           </div>
 
@@ -85,6 +102,7 @@ export default function PlayerArea({
             personalStacks={player.personal_stacks}
             onDropToStack={onDropToStack}
             onDragStartPayload={onDragStartPayload}
+            pickContext={pickContext}
           />
         </div>
       ) : (
