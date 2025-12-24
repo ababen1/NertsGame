@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, GameState, Rank, Suit } from "../types/game";
-import { isRedSuit } from "../utils/solitiareFuncs";
+import {
+  canPlayOnPersonal,
+  isDescendingAlternating,
+} from "../utils/solitiareFuncs";
 
 const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
 const RANKS: Rank[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
@@ -49,13 +52,6 @@ function canPlayOnCenter(
   return card.rank === top.rank + 1;
 }
 
-function canPlayOnPersonal(card: Card, top: Card | undefined | null) {
-  if (!top) return true;
-  return (
-    card.rank === top.rank - 1 && isRedSuit(card.suit) !== isRedSuit(top.suit)
-  );
-}
-
 export function useOfflinePractice(playerId: number, _playerName: string) {
   const [gameState, setGameState] = useState<GameState | null>(null);
 
@@ -67,7 +63,6 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     }
     const nerts = deck.splice(0, 13);
     const remainingDeck = deck; // 33 cards
-    const visible = remainingDeck.slice(0, Math.min(3, remainingDeck.length));
 
     const state: GameState = {
       game_id: 0,
@@ -87,10 +82,8 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
           score: 0,
           nerts_pile_count: nerts.length,
           personal_stacks: personalStacks,
-          deck_size: remainingDeck.length + 0, // deck + deck_used
-          deck_display: visible,
           deck: remainingDeck.slice(0), // full deck for private view
-          deck_used: [],
+          deck_page: 0, // Start at first page
           nerts_pile: nerts,
         },
       },
@@ -106,59 +99,78 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     setGameState((prev) => {
       if (!prev) return prev;
       const player = prev.players[playerId];
-      const deck = [...(player.deck || [])];
-      const used = [...(player.deck_used || [])];
+      const deck = player.deck || [];
 
-      // If both deck and used are empty, nothing to do
-      if (deck.length === 0 && used.length === 0) return prev;
+      // If deck is empty, nothing to do
+      if (deck.length === 0) return prev;
 
-      // If deck is empty but we have used cards, recycle them
-      if (deck.length === 0 && used.length > 0) {
-        const recycled = [...used]; // keep order
-        return {
-          ...prev,
-          players: {
-            ...prev.players,
-            [playerId]: {
-              ...player,
-              deck: recycled,
-              deck_used: [],
-              deck_display: recycled.slice(0, Math.min(3, recycled.length)),
-              deck_size: recycled.length,
-            },
-          },
-        };
+      // Calculate number of pages (each page is 3 cards)
+      // Page 0 = no cards displayed, Page 1 = first 3 cards, Page 2 = next 3 cards, etc.
+      const cardsPerPage = 3;
+      const totalPages = Math.ceil(deck.length / cardsPerPage);
+      const currentPage = player.deck_page || 0;
+
+      // Move to next page
+      let nextPage: number;
+      if (currentPage === 0) {
+        // From page 0 (hidden), go to page 1 (first cards)
+        nextPage = 1;
+      } else if (currentPage >= totalPages) {
+        // At or beyond last page, go back to page 0 (hidden)
+        nextPage = 0;
+      } else {
+        // Move to next page
+        nextPage = currentPage + 1;
+        // If we've reached beyond the last page, go to page 0
+        if (nextPage > totalPages) {
+          nextPage = 0;
+        }
       }
 
-      // Normal case: draw from deck
-      const display = deck.slice(0, Math.min(3, deck.length));
-      const remaining = deck.slice(display.length);
       return {
         ...prev,
         players: {
           ...prev.players,
           [playerId]: {
             ...player,
-            deck: remaining,
-            deck_display: display,
-            deck_size: remaining.length + used.length, // deck + deck_used
+            deck_page: nextPage,
           },
         },
       };
     });
   }, [playerId]);
 
-  const useDeckTop = (state: GameState, pid: number) => {
+  const removeCardFromDeck = (state: GameState, pid: number, card: Card) => {
     const player = state.players[pid];
-    if (!player.deck_display || player.deck_display.length === 0) return state;
-    const display = [...player.deck_display];
-    const used = [...(player.deck_used || [])];
     const deck = [...(player.deck || [])];
-    const played = display.pop() as Card;
-    // remove from deck (it corresponds to the top slice)
-    deck.shift();
-    used.push(played);
-    const newDisplay = deck.slice(0, Math.min(3, deck.length));
+    const deckPage = player.deck_page || 0;
+
+    // Find and remove the card from deck
+    const cardIndex = deck.findIndex(
+      (c) => c.rank === card.rank && c.suit === card.suit
+    );
+
+    if (cardIndex === -1) return state;
+
+    // Remove the card
+    deck.splice(cardIndex, 1);
+
+    // Recalculate page if needed (if we removed a card from current page)
+    // Page 0 = no cards, Page 1+ = actual card pages
+    const cardsPerPage = 3;
+    const totalPages = Math.ceil(deck.length / cardsPerPage);
+    let newPage = deckPage;
+
+    // If current page is beyond available pages, adjust it
+    if (deckPage > totalPages) {
+      // Beyond last page, go to page 0 (no cards displayed)
+      newPage = 0;
+    } else if (deckPage > 0 && deckPage <= totalPages) {
+      // On a valid page, stay on it (page number doesn't change when removing a card)
+      newPage = deckPage;
+    }
+    // If deckPage is 0, keep it at 0
+
     return {
       ...state,
       players: {
@@ -166,9 +178,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         [pid]: {
           ...player,
           deck,
-          deck_used: used,
-          deck_display: newDisplay,
-          deck_size: deck.length + used.length, // deck + deck_used
+          deck_page: newPage,
         },
       },
     };
@@ -176,14 +186,29 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
 
   const removeFromPlayer = (state: GameState, pid: number, card: Card) => {
     let s = state;
-    // deck top
     const player = s.players[pid];
-    if (player.deck_display && player.deck_display.length > 0) {
-      const top = player.deck_display[player.deck_display.length - 1];
-      if (top.suit === card.suit && top.rank === card.rank) {
-        return useDeckTop(s, pid);
+
+    // Check if card is in deck (check current page's top card)
+    // Page 0 = no cards displayed, Page 1+ = actual card pages
+    const deck = player.deck || [];
+    const deckPage = player.deck_page || 0;
+    let currentPageCards: Card[] = [];
+    if (deckPage > 0) {
+      // Page 1+ shows cards: page 1 = cards 0-2, page 2 = cards 3-5, etc.
+      const cardsPerPage = 3;
+      const pageStart = (deckPage - 1) * cardsPerPage;
+      const pageEnd = Math.min(pageStart + cardsPerPage, deck.length);
+      currentPageCards = deck.slice(pageStart, pageEnd);
+    }
+    // Page 0 shows nothing (currentPageCards is empty array)
+
+    if (currentPageCards.length > 0) {
+      const topCard = currentPageCards[currentPageCards.length - 1];
+      if (topCard.suit === card.suit && topCard.rank === card.rank) {
+        return removeCardFromDeck(s, pid, card);
       }
     }
+
     // nerts
     if (player.nerts_pile) {
       const idx = player.nerts_pile.findIndex(
@@ -293,12 +318,13 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         const target = [...player.personal_stacks[to]];
         if (source.length < count) return prev;
         const seq = source.slice(source.length - count);
-        // validate sequence descending alternating
-        for (let i = 0; i < seq.length - 1; i += 1) {
-          if (!canPlayOnPersonal(seq[i], seq[i + 1])) return prev;
-        }
-        const targetTop = target[target.length - 1];
-        if (!canPlayOnPersonal(seq[0], targetTop)) return prev;
+        // Validate sequence is descending alternating
+        if (!isDescendingAlternating(seq)) return prev;
+        // Check if bottom card of sequence can be placed on target
+        const targetTop =
+          target.length > 0 ? target[target.length - 1] : undefined;
+        const rootCard = seq[0];
+        if (!canPlayOnPersonal(rootCard, targetTop)) return prev;
         const newSource = source.slice(0, source.length - count);
         const newTarget = [...target, ...seq];
         const stacks = player.personal_stacks.map((s, i) => {

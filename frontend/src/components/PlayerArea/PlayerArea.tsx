@@ -1,4 +1,4 @@
-import { PlayerState } from "../../types/game";
+import { Card, PlayerState } from "../../types/game";
 import { cardAssetPath, cardBackPath } from "../../utils/cardAsset";
 import { DragPayload } from "./types";
 import NertsPile from "./NertsPile";
@@ -23,10 +23,21 @@ export default function PlayerArea({
   onDropToStack,
   onDragStartPayload,
 }: PlayerAreaProps) {
+  // Calculate current page display from deck and deck_page
+  // Page 0 = no cards displayed, Page 1 = first 3 cards, Page 2 = next 3 cards, etc.
+  const deck = player.deck || [];
+  const deckPage = player.deck_page || 0;
+  const cardsPerPage = 3;
+  let deckDisplay: Card[] = [];
+  if (deckPage > 0) {
+    // Page 1+ shows cards: page 1 = cards 0-2, page 2 = cards 3-5, etc.
+    const pageStart = (deckPage - 1) * cardsPerPage;
+    const pageEnd = Math.min(pageStart + cardsPerPage, deck.length);
+    deckDisplay = deck.slice(pageStart, pageEnd);
+  }
+  // Page 0 shows nothing (deckDisplay is empty array)
   const playableCard =
-    player.deck_display && player.deck_display.length > 0
-      ? player.deck_display[player.deck_display.length - 1]
-      : null;
+    deckDisplay.length > 0 ? deckDisplay[deckDisplay.length - 1] : null;
 
   const canCallNerts = player.nerts_pile_count === 0;
 
@@ -60,7 +71,7 @@ export default function PlayerArea({
               <button onClick={onDrawDeck} className="deck-button small">
                 <div className="deck-info">
                   <span>Deck</span>
-                  <span className="deck-size">{player.deck_size || 0}</span>
+                  <span className="deck-size">{deck.length}</span>
                 </div>
                 <img
                   src={cardBackPath()}
@@ -73,6 +84,7 @@ export default function PlayerArea({
                   const payload: DragPayload = {
                     source: "deck",
                     card: playableCard,
+                    subCards: [],
                   };
                   const isPickablePayload = isPickable(payload, pickContext);
                   return (
@@ -107,7 +119,7 @@ export default function PlayerArea({
         </div>
       ) : (
         <div className="opponent-view">
-          <p>Deck: {player.deck_size || 0} cards</p>
+          <p>Deck: {deck.length} cards</p>
           <p>Nerts Pile: {player.nerts_pile_count} cards</p>
           <div className="opponent-stacks">
             {player.personal_stacks.map((stack, idx) => (

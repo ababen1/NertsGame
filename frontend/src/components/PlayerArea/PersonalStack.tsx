@@ -29,7 +29,36 @@ export default function PersonalStack({
     try {
       const data = e.dataTransfer.getData("application/json");
       if (!data) return null;
-      return JSON.parse(data) as DragPayload;
+      const payload = JSON.parse(data) as DragPayload;
+
+      // If payload is from a personal stack, add the cards array (clicked card + all sub cards)
+      if (
+        payload.source === "personal" &&
+        payload.fromStack !== undefined &&
+        payload.count &&
+        payload.count > 0 &&
+        pickContext.personalStacks
+      ) {
+        const sourceStack = pickContext.personalStacks[payload.fromStack];
+        if (sourceStack && sourceStack.length >= payload.count) {
+          const startIdx = sourceStack.length - payload.count;
+          const cards = sourceStack.slice(startIdx);
+          return {
+            ...payload,
+            cards,
+          };
+        }
+      }
+
+      // For other sources (deck, nerts), cards array is just the single card
+      if (payload.card && !payload.subCards) {
+        return {
+          ...payload,
+          cards: [payload.card],
+        };
+      }
+
+      return payload;
     } catch {
       return null;
     }
@@ -58,7 +87,7 @@ export default function PersonalStack({
               const startIdx = sourceStack.length - payload.count;
               const sequence = sourceStack.slice(startIdx);
               // Bottom card is the last card in the sequence
-              cardToCheck = sequence[sequence.length - 1];
+              cardToCheck = sequence[0];
             }
           }
           // Create a modified payload with the bottom card for validation
@@ -86,6 +115,7 @@ export default function PersonalStack({
               fromStack: stackIndex,
               count,
               card,
+              subCards: draggableSlice,
             };
             const isPickablePayload = isPickable(payload, pickContext);
             const shouldAllowDrag = canDrag && isPickablePayload;

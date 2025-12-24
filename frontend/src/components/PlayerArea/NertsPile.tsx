@@ -35,6 +35,7 @@ export default function NertsPile({
               const payload: DragPayload = {
                 source: "nerts",
                 card: top,
+                subCards: [],
               };
               const isPickablePayload = isPickable(payload, pickContext);
               return (

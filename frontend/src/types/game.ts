@@ -19,11 +19,9 @@ export interface PlayerState {
   score: number;
   nerts_pile_count: number;
   personal_stacks: Card[][];
-  deck_size?: number;
-  deck_display?: Card[];
   // Private fields (only for own player)
   deck?: Card[];
-  deck_used?: Card[];
+  deck_page?: number; // Current page index (0-based, each page is 3 cards)
   nerts_pile?: Card[];
 }
 

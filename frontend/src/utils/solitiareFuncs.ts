@@ -3,8 +3,8 @@ import { Card, CenterStack } from "../types/game";
 export type DragPayload = {
   source: "deck" | "nerts" | "personal";
   fromStack?: number;
-  count?: number;
-  card?: Card;
+  card: Card;
+  subCards: Card[]; // Array of cards being dragged (clicked card + all sub cards below it)
 };
 
 export type DropTarget =
@@ -32,13 +32,13 @@ export const canAddToCenterStack = (card: Card, stack: CenterStack) => {
     return card.rank == 1;
   } else {
     // Card can be added if it follows the last card in the stack
-    return card.rank + 1 == stack.cards[stack.cards.length - 1].rank;
+    return card.rank - 1 == stack.cards[stack.cards.length - 1].rank;
   }
 };
 
 const cardsEqual = (a: Card, b: Card) => a.rank === b.rank && a.suit === b.suit;
 
-const canPlayOnPersonal = (card: Card, top: Card | undefined | null) => {
+export const canPlayOnPersonal = (card: Card, top: Card | undefined | null) => {
   // Empty stacks can accept any card (or stack)
   if (!top) return true;
   // Non-empty stacks: card must be one rank lower and opposite color
@@ -47,7 +47,7 @@ const canPlayOnPersonal = (card: Card, top: Card | undefined | null) => {
   );
 };
 
-const isDescendingAlternating = (stack: Card[]) => {
+export const isDescendingAlternating = (stack: Card[]) => {
   if (stack.length === 0) return false;
   if (stack.length === 1) return true;
 
@@ -75,7 +75,7 @@ export const isPickable = (payload: DragPayload, context: PickContext) => {
     const stack = context.personalStacks[payload.fromStack];
     if (!stack || stack.length === 0) return false;
 
-    const count = payload.count ?? 1;
+    const count = payload.subCards.length ?? 1;
     if (count < 1 || count > stack.length) return false;
 
     const startIdx = stack.length - count;
@@ -105,7 +105,7 @@ export const isDroppable = (payload: DragPayload, target: DropTarget) => {
 
   if (target.type === "center") {
     // Center stacks only accept single cards that ascend by suit.
-    if (payload.count && payload.count > 1) return false;
+    if (payload.subCards && payload.subCards.length > 1) return false;
     return canAddToCenterStack(card, target.stack);
   }
 
