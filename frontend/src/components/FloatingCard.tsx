@@ -1,5 +1,6 @@
 import { useCardDrag } from "../hooks/useCardDrag";
 import { cardAssetPath } from "../utils/cardAsset";
+import { CARD_STACK_OFFSET } from "../utils/constants";
 import "./FloatingCard.css";
 
 interface FloatingCardProps {
@@ -19,7 +20,7 @@ export default function FloatingCard({ dragState, floatingCardRef }: FloatingCar
     : [dragState.card];
   const cardWidth = 88;
   const cardHeight = 123;
-  const stackOffset = 14; // Offset between stacked cards
+  const stackOffset = CARD_STACK_OFFSET;
 
   return (
     <div
