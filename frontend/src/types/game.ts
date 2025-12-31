@@ -16,13 +16,14 @@ export interface CenterStack {
 export interface PlayerState {
   player_id: number;
   position: number;
-  score: number;
+  score: number[]; // Array of round scores, total score is sum of this array
   nerts_pile_count: number;
   personal_stacks: Card[][];
   // Private fields (only for own player)
   deck?: Card[];
   deck_page?: number; // Current page index (0-based, each page is 3 cards)
   nerts_pile?: Card[];
+  scoredCards?: Card[]; // Cards that have been scored to the center
 }
 
 export interface GameState {

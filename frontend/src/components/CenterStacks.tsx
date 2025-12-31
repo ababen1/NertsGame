@@ -62,7 +62,10 @@ export default function CenterStacks({
                   suit,
                   cards: stack,
                 };
-                const target: DropTarget = { type: "center", stack: centerStack };
+                const target: DropTarget = {
+                  type: "center",
+                  stack: centerStack,
+                };
                 if (!isDroppable(payload, target)) {
                   // Invalid drop - ignore it (card stays in place)
                   return;
@@ -87,9 +90,6 @@ export default function CenterStacks({
                   />
                 ) : (
                   <div className="card empty-card">A</div>
-                )}
-                {stack.length > 1 && (
-                  <div className="stack-count">+{stack.length - 1}</div>
                 )}
               </div>
             </div>

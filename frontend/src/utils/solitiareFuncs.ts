@@ -1,4 +1,4 @@
-import { Card, CenterStack } from "../types/game";
+import { Card, CenterStack, PlayerState } from "../types/game";
 
 export type DragPayload = {
   source: "deck" | "nerts" | "personal";
@@ -118,4 +118,21 @@ export const isDroppable = (payload: DragPayload, target: DropTarget) => {
   }
 
   return false;
+};
+
+export const calculateRoundScore = (player: PlayerState) => {
+  const nertsPileCount: number = player.nerts_pile?.length || 0;
+  const scoredCardsCount: number = player.scoredCards?.length || 0;
+  return nertsPileCount * -2 + scoredCardsCount;
+};
+
+export const getTotalScore = (player: PlayerState): number => {
+  return player.score.reduce((sum, roundScore) => sum + roundScore, 0);
+};
+
+export const getCurrentTotalScore = (player: PlayerState): number => {
+  // Sum of completed rounds plus current round's score
+  const completedRoundsScore = getTotalScore(player);
+  const currentRoundScore = calculateRoundScore(player);
+  return completedRoundsScore + currentRoundScore;
 };

@@ -31,30 +31,22 @@ export default function PersonalStack({
       if (!data) return null;
       const payload = JSON.parse(data) as DragPayload;
 
-      // If payload is from a personal stack, add the cards array (clicked card + all sub cards)
+      // If payload is from a personal stack, add the subCards array (clicked card + all sub cards)
       if (
         payload.source === "personal" &&
         payload.fromStack !== undefined &&
-        payload.count &&
-        payload.count > 0 &&
-        pickContext.personalStacks
+        payload.subCards &&
+        payload.subCards.length > 0
       ) {
-        const sourceStack = pickContext.personalStacks[payload.fromStack];
-        if (sourceStack && sourceStack.length >= payload.count) {
-          const startIdx = sourceStack.length - payload.count;
-          const cards = sourceStack.slice(startIdx);
-          return {
-            ...payload,
-            cards,
-          };
-        }
+        // subCards is already set in the payload from onDragStart
+        return payload;
       }
 
-      // For other sources (deck, nerts), cards array is just the single card
+      // For other sources (deck, nerts), subCards array is just the single card
       if (payload.card && !payload.subCards) {
         return {
           ...payload,
-          cards: [payload.card],
+          subCards: [payload.card],
         };
       }
 
@@ -141,6 +133,35 @@ export default function PersonalStack({
                     "application/json",
                     JSON.stringify(finalPayload)
                   );
+                  // Set custom drag image to only show the picked card, not the entire stack
+                  const dragImg = document.createElement("img");
+                  dragImg.src = cardAssetPath(card);
+                  dragImg.style.position = "absolute";
+                  dragImg.style.top = "-1000px";
+                  dragImg.style.width = "70px"; // Make it smaller
+                  dragImg.style.height = "auto";
+                  document.body.appendChild(dragImg);
+
+                  // Wait for image to load, then center it at cursor
+                  dragImg.onload = () => {
+                    const offsetX = dragImg.offsetWidth / 2;
+                    const offsetY = dragImg.offsetHeight / 2;
+                    e.dataTransfer.setDragImage(dragImg, offsetX, offsetY);
+                  };
+
+                  // If image is already loaded, set it immediately
+                  if (dragImg.complete) {
+                    const offsetX = dragImg.offsetWidth / 2;
+                    const offsetY = dragImg.offsetHeight / 2;
+                    e.dataTransfer.setDragImage(dragImg, offsetX, offsetY);
+                  }
+
+                  // Clean up after a short delay
+                  setTimeout(() => {
+                    if (document.body.contains(dragImg)) {
+                      document.body.removeChild(dragImg);
+                    }
+                  }, 0);
                 }}
               />
             );

@@ -9,18 +9,20 @@ class PlayerState:
     def __init__(self, player_id: int, position: int):
         self.player_id = player_id
         self.position = position
-        self.score = 0
+        self.score: List[int] = []  # Array of round scores, total score is sum of this array
         
         # Personal deck (33 cards)
         self.deck: List[Card] = []
-        self.deck_display: List[Card] = []  # Top 3 visible cards (only last is playable)
-        self.deck_used: List[Card] = []  # Cards that have been used from deck
+        self.deck_page: int = 0  # Current page index (0 = no cards, 1 = first 3 cards, etc.)
         
         # Nerts pile (13 cards)
         self.nerts_pile: List[Card] = []
         
         # Personal stacks (6 stacks, 1 card each initially)
         self.personal_stacks: List[List[Card]] = [[] for _ in range(6)]
+        
+        # Cards that have been scored to the center
+        self.scored_cards: List[Card] = []
 
     def to_dict(self, include_private: bool = False) -> dict:
         """Convert to dictionary. include_private=False hides opponent's cards"""
@@ -38,13 +40,9 @@ class PlayerState:
         
         if include_private:
             data['deck'] = [card.to_dict() for card in self.deck]
-            data['deck_display'] = [card.to_dict() for card in self.deck_display]
-            data['deck_used'] = [card.to_dict() for card in self.deck_used]
+            data['deck_page'] = self.deck_page
             data['nerts_pile'] = [card.to_dict() for card in self.nerts_pile]
-        else:
-            # Only show deck size and top visible card
-            data['deck_size'] = len(self.deck) + len(self.deck_used)
-            data['deck_display'] = [self.deck_display[-1].to_dict()] if self.deck_display else []
+            data['scored_cards'] = [card.to_dict() for card in self.scored_cards]
         
         return data
 
@@ -52,20 +50,20 @@ class PlayerState:
     def from_dict(cls, data: dict) -> 'PlayerState':
         """Reconstruct from dictionary"""
         player_state = cls(data['player_id'], data['position'])
-        player_state.score = data['score']
+        player_state.score = data.get('score', [])  # Array of round scores
         
         if 'deck' in data:
             player_state.deck = [Card.from_dict(c) for c in data['deck']]
-        if 'deck_display' in data:
-            player_state.deck_display = [Card.from_dict(c) for c in data['deck_display']]
-        if 'deck_used' in data:
-            player_state.deck_used = [Card.from_dict(c) for c in data['deck_used']]
+        if 'deck_page' in data:
+            player_state.deck_page = data['deck_page']
         if 'nerts_pile' in data:
             player_state.nerts_pile = [Card.from_dict(c) for c in data['nerts_pile']]
         if 'personal_stacks' in data:
             player_state.personal_stacks = [
                 [Card.from_dict(c) for c in stack] for stack in data['personal_stacks']
             ]
+        if 'scored_cards' in data:
+            player_state.scored_cards = [Card.from_dict(c) for c in data['scored_cards']]
         
         return player_state
 
@@ -115,65 +113,88 @@ class GameEngine:
             
             # Remaining 33 cards go to personal deck
             player_state.deck = deck.cards
-            player_state.deck_display = []
-            player_state.deck_used = []
+            player_state.deck_page = 0  # Start at page 0 (no cards displayed)
+            
+            # Reset scored cards for new round
+            player_state.scored_cards = []
+            
+            # Score array persists across rounds, new round score will be added when calling nerts
     
     def draw_deck(self, player_id: int) -> bool:
-        """Draw/reveal cards from player's deck. Returns True if successful"""
+        """Draw/reveal cards from player's deck using page-based system. Returns True if successful"""
         if player_id not in self.players:
             return False
         
         player = self.players[player_id]
         
-        # If deck is empty, cycle used cards back
+        # If deck is empty, nothing to do
         if not player.deck:
-            if not player.deck_used:
-                return False  # No cards available
-            # recycle in the same order they were used (no shuffle)
-            player.deck = player.deck_used
-            player.deck_used = []
-        
-        # Draw up to 3 cards (or remaining cards)
-        cards_to_draw = min(3, len(player.deck))
-        if cards_to_draw == 0:
             return False
         
-        # Add to display (only top card is playable)
-        player.deck_display = player.deck[:cards_to_draw]
+        # Calculate number of pages (each page is 3 cards)
+        # Page 0 = no cards displayed, Page 1 = first 3 cards, etc.
+        cards_per_page = 3
+        total_pages = (len(player.deck) + cards_per_page - 1) // cards_per_page  # Ceiling division
+        current_page = player.deck_page
         
+        # Move to next page
+        if current_page == 0:
+            # From page 0 (hidden), go to page 1 (first cards)
+            next_page = 1
+        elif current_page >= total_pages:
+            # At or beyond last page, go back to page 0 (hidden)
+            next_page = 0
+        else:
+            # Move to next page
+            next_page = current_page + 1
+            # If we've reached beyond the last page, go to page 0
+            if next_page > total_pages:
+                next_page = 0
+        
+        player.deck_page = next_page
         return True
     
     def get_playable_card(self, player_id: int) -> Optional[Card]:
-        """Get the currently playable card from deck (top of display)"""
+        """Get the currently playable card from deck (top of current page)"""
         if player_id not in self.players:
             return None
         player = self.players[player_id]
-        return player.deck_display[-1] if player.deck_display else None
+        
+        if not player.deck or player.deck_page == 0:
+            return None
+        
+        # Page 1+ shows cards: page 1 = cards 0-2, page 2 = cards 3-5, etc.
+        cards_per_page = 3
+        page_start = (player.deck_page - 1) * cards_per_page
+        page_end = min(page_start + cards_per_page, len(player.deck))
+        current_page_cards = player.deck[page_start:page_end]
+        
+        return current_page_cards[-1] if current_page_cards else None
     
-    def use_deck_card(self, player_id: int) -> bool:
-        """Move the playable card from deck display to used pile"""
+    def remove_card_from_deck(self, player_id: int, card: Card) -> bool:
+        """Remove a card from the deck. Returns True if found and removed"""
         if player_id not in self.players:
             return False
         player = self.players[player_id]
         
-        if not player.deck_display:
+        # Find and remove the card from deck
+        try:
+            card_index = player.deck.index(card)
+            player.deck.pop(card_index)
+            
+            # Recalculate page if needed
+            cards_per_page = 3
+            total_pages = (len(player.deck) + cards_per_page - 1) // cards_per_page if player.deck else 0
+            if player.deck_page > total_pages:
+                # Beyond last page, go to page 0
+                player.deck_page = 0
+            elif player.deck_page > 0 and total_pages == 0:
+                # No cards left, go to page 0
+                player.deck_page = 0
+            
+            return True
+        except ValueError:
             return False
-        
-        # Remove top card from display and deck
-        used_card = player.deck_display.pop()
-        if player.deck:
-            player.deck.pop(0)
-        
-        # Add to used pile
-        player.deck_used.append(used_card)
-        
-        # Update display if there are more cards
-        if player.deck:
-            player.deck_display = player.deck[:min(3, len(player.deck))]
-        else:
-            player.deck_display = []
-        
-        return True
     
     def play_card_to_center(self, player_id: int, card: Card, suit: Suit) -> Tuple[bool, str]:
         """Play a card to a center stack. Returns (success, message)"""
@@ -194,8 +215,8 @@ class GameEngine:
         # Add to center stack
         stack.append(card)
         
-        # Award point
-        self.players[player_id].score += 1
+        # Add card to scored_cards (score will be calculated at end of round)
+        self.players[player_id].scored_cards.append(card)
         
         return True, "Card played successfully"
     
@@ -228,12 +249,16 @@ class GameEngine:
         """Remove a card from player's area. Returns True if found and removed"""
         player = self.players[player_id]
         
-        # Check deck display (playable card)
-        if player.deck_display and player.deck_display[-1] == card:
-            self.use_deck_card(player_id)
-            return True
+        # Check deck (current page's top card)
+        if player.deck and player.deck_page > 0:
+            cards_per_page = 3
+            page_start = (player.deck_page - 1) * cards_per_page
+            page_end = min(page_start + cards_per_page, len(player.deck))
+            current_page_cards = player.deck[page_start:page_end]
+            if current_page_cards and current_page_cards[-1] == card:
+                return self.remove_card_from_deck(player_id, card)
         
-        # Check Nerts pile
+        # Check Nerts pile (score will be calculated at end of round)
         if card in player.nerts_pile:
             player.nerts_pile.remove(card)
             return True
@@ -298,16 +323,23 @@ class GameEngine:
         
         return True, "NERTS! Round ended"
     
+    def _calculate_round_score(self, player: PlayerState) -> int:
+        """Calculate the current round's score based on nerts pile and scored cards"""
+        nerts_pile_count = len(player.nerts_pile)
+        scored_cards_count = len(player.scored_cards)
+        return nerts_pile_count * -2 + scored_cards_count
+    
     def _end_round(self):
         """End the current round and calculate scores"""
-        # Calculate penalties for remaining cards in Nerts piles
+        # Calculate round score for each player and add to their score array
         for player_id, player in self.players.items():
-            penalty = len(player.nerts_pile) * -2
-            player.score += penalty
+            round_score = self._calculate_round_score(player)
+            player.score.append(round_score)
         
-        # Check for winner
+        # Check for winner (100 points total)
         for player_id, player in self.players.items():
-            if player.score >= self.WINNING_SCORE:
+            total_score = sum(player.score)
+            if total_score >= self.WINNING_SCORE:
                 self.status = 'finished'
                 self.winner_id = player_id
                 return

@@ -4,7 +4,11 @@ import { DragPayload } from "./types";
 import NertsPile from "./NertsPile";
 import PlayArea from "./PlayArea";
 import "./PlayerArea.css";
-import { isPickable, PickContext } from "../../utils/solitiareFuncs";
+import {
+  isPickable,
+  PickContext,
+  getCurrentTotalScore,
+} from "../../utils/solitiareFuncs";
 
 interface PlayerAreaProps {
   player: PlayerState;
@@ -51,7 +55,9 @@ export default function PlayerArea({
     <div className={`player-area ${isCurrentPlayer ? "current-player" : ""}`}>
       <div className="player-header">
         <h3>Player {player.position + 1}</h3>
-        <div className="player-score">Score: {player.score}</div>
+        <div className="player-score">
+          Score: {getCurrentTotalScore(player)}
+        </div>
       </div>
 
       {isCurrentPlayer ? (
@@ -84,7 +90,7 @@ export default function PlayerArea({
                   const payload: DragPayload = {
                     source: "deck",
                     card: playableCard,
-                    subCards: [],
+                    subCards: [playableCard],
                   };
                   const isPickablePayload = isPickable(payload, pickContext);
                   return (

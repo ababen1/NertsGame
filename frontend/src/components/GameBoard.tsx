@@ -61,7 +61,27 @@ export default function GameBoard({
       <div className="game-header">
         <h1>
           {isOffline ? "Practice Mode" : `Game #${gameId}`} - Round{" "}
-          {gameState.current_round}
+          {(() => {
+            // #region agent log
+            fetch(
+              "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  location: "GameBoard.tsx:64",
+                  message: "Displaying round number",
+                  data: { currentRound: gameState.current_round, isOffline },
+                  timestamp: Date.now(),
+                  sessionId: "debug-session",
+                  runId: "run1",
+                  hypothesisId: "E",
+                }),
+              }
+            ).catch(() => {});
+            // #endregion
+            return gameState.current_round;
+          })()}
         </h1>
         <div className="game-info">
           <div className="rename-area">
@@ -102,7 +122,7 @@ export default function GameBoard({
           centerStacks={gameState.center_stacks}
           onCardDrop={(payload) => {
             if (!payload) return;
-            if (payload.count && payload.count > 1) return; // center accepts single card
+            if (payload.subCards.length > 1) return; // center accepts single card
             if (payload.card) {
               playCard(payload.card, "center", payload.card.suit);
             }

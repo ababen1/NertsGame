@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, GameState, Rank, Suit } from "../types/game";
 import {
   canPlayOnPersonal,
   isDescendingAlternating,
+  calculateRoundScore,
+  getTotalScore,
 } from "../utils/solitiareFuncs";
 
 const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
@@ -54,45 +56,178 @@ function canPlayOnCenter(
 
 export function useOfflinePractice(playerId: number, _playerName: string) {
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const isInitializingRef = useRef(false);
 
   const initGame = useCallback(() => {
-    const deck = shuffle(buildDeck());
-    const personalStacks: Card[][] = [];
-    for (let i = 0; i < 6; i += 1) {
-      personalStacks.push([deck.pop() as Card]);
-    }
-    const nerts = deck.splice(0, 13);
-    const remainingDeck = deck; // 33 cards
+    setGameState((prev) => {
+      // Prevent double initialization in React StrictMode for brand new games
+      // If prev is null (brand new game) and we're already initializing, skip
+      if (prev === null && isInitializingRef.current) {
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "useOfflinePractice.ts:61",
+              message: "initGame blocked by ref (brand new game)",
+              data: {},
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "post-fix",
+              hypothesisId: "FIX",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+        return prev; // Return null to prevent state update
+      }
 
-    const state: GameState = {
-      game_id: 0,
-      current_round: 1,
-      status: "active",
-      winner_id: null,
-      center_stacks: {
-        hearts: [],
-        diamonds: [],
-        clubs: [],
-        spades: [],
-      },
-      players: {
-        [playerId]: {
-          player_id: playerId,
-          position: 0,
-          score: 0,
-          nerts_pile_count: nerts.length,
-          personal_stacks: personalStacks,
-          deck: remainingDeck.slice(0), // full deck for private view
-          deck_page: 0, // Start at first page
-          nerts_pile: nerts,
+      // Mark as initializing if this is a brand new game
+      if (prev === null) {
+        isInitializingRef.current = true;
+      }
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "useOfflinePractice.ts:61",
+            message: "initGame called",
+            data: {
+              prevIsNull: prev === null,
+              prevRound: prev?.current_round,
+              playerId,
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            runId: "run1",
+            hypothesisId: "A",
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
+
+      const deck = shuffle(buildDeck());
+      const personalStacks: Card[][] = [];
+      for (let i = 0; i < 6; i += 1) {
+        personalStacks.push([deck.pop() as Card]);
+      }
+      const nerts = deck.splice(0, 13);
+      const remainingDeck = deck; // 33 cards
+
+      // Get previous score array (persists across rounds)
+      const previousScoreArray = prev?.players[playerId]?.score || [];
+
+      // For brand new game (prev === null), start at round 1
+      // For new round (after calling nerts), increment from previous round
+      // If there are no previous scores and current_round is 1 or less, treat as new game
+      // (handles case where initGame is called multiple times before state updates)
+      const isNewGame =
+        prev === null ||
+        (previousScoreArray.length === 0 && prev && prev.current_round <= 1);
+      const calculatedRound = isNewGame ? 1 : (prev?.current_round || 0) + 1;
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "useOfflinePractice.ts:75",
+            message: "Round calculation",
+            data: {
+              prevRound: prev?.current_round,
+              calculatedRound,
+              isNewGame: prev === null,
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            runId: "run1",
+            hypothesisId: "B",
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
+
+      const state: GameState = {
+        game_id: 0,
+        current_round: calculatedRound,
+        status: prev?.status || "active",
+        winner_id: prev?.winner_id || null,
+        center_stacks: {
+          hearts: [],
+          diamonds: [],
+          clubs: [],
+          spades: [],
         },
-      },
-    };
-    setGameState(state);
+        players: {
+          [playerId]: {
+            player_id: playerId,
+            position: 0,
+            score: previousScoreArray, // Keep previous round scores, new round score will be added when calling nerts
+            nerts_pile_count: nerts.length,
+            personal_stacks: personalStacks,
+            deck: remainingDeck.slice(0), // full deck for private view
+            deck_page: 0, // Start at first page
+            nerts_pile: nerts,
+            scoredCards: [], // Initialize empty array for scored cards
+          },
+        },
+      };
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "useOfflinePractice.ts:98",
+            message: "initGame returning state",
+            data: {
+              finalRound: state.current_round,
+              prevWasNull: prev === null,
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            runId: "run1",
+            hypothesisId: "C",
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
+      return state;
+    });
   }, [playerId]);
 
   useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "useOfflinePractice.ts:102",
+        message: "useEffect calling initGame",
+        data: {},
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        runId: "post-fix",
+        hypothesisId: "D",
+      }),
+    }).catch(() => {});
+    // #endregion
     initGame();
+    // Reset the ref after a delay to allow state update to complete
+    const timeoutId = setTimeout(() => {
+      isInitializingRef.current = false;
+    }, 100);
+    return () => {
+      clearTimeout(timeoutId);
+      isInitializingRef.current = false;
+    };
   }, [initGame]);
 
   const drawDeck = useCallback(() => {
@@ -209,7 +344,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       }
     }
 
-    // nerts
+    // nerts - removing a card from nerts pile (no score change during round, calculated at end)
     if (player.nerts_pile) {
       const idx = player.nerts_pile.findIndex(
         (c) => c.rank === card.rank && c.suit === card.suit
@@ -271,14 +406,15 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
           if (!canPlayOnCenter(card, top, suit)) return prev;
           next = removeFromPlayer(next, playerId, card);
           const newStack = [...stack, card];
+          const currentPlayer = next.players[playerId];
           return {
             ...next,
             center_stacks: { ...next.center_stacks, [suit]: newStack },
             players: {
               ...next.players,
               [playerId]: {
-                ...next.players[playerId],
-                score: player.score + 1,
+                ...currentPlayer,
+                scoredCards: [...(currentPlayer.scoredCards || []), card],
               },
             },
           };
@@ -351,17 +487,27 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     setGameState((prev) => {
       if (!prev) return prev;
       const player = prev.players[playerId];
-      const penalty = (player.nerts_pile_count || 0) * -2;
-      const updatedScore = player.score + penalty;
-      // Restart round
+
+      // Calculate the current round's score
+      const roundScore = calculateRoundScore(player);
+
+      // Add round score to the score array
+      const newScoreArray = [...player.score, roundScore];
+      const totalScore = getTotalScore({ ...player, score: newScoreArray });
+
+      // Check for winner (100 points)
+      const winnerId = totalScore >= 100 ? playerId : prev.winner_id;
+      const newStatus = totalScore >= 100 ? "finished" : prev.status;
+
       return {
         ...prev,
-        current_round: prev.current_round + 1,
+        status: newStatus,
+        winner_id: winnerId,
         players: {
           ...prev.players,
           [playerId]: {
             ...player,
-            score: updatedScore,
+            score: newScoreArray,
           },
         },
       };
