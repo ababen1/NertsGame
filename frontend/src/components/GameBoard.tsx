@@ -4,6 +4,8 @@ import { useOfflinePractice } from "../hooks/useOfflinePractice";
 import PlayerArea from "./PlayerArea";
 import CenterStacks from "./CenterStacks";
 import "./GameBoard.css";
+import { CardDragProvider, useCardDragContext } from "../contexts/CardDragContext";
+import FloatingCard from "./FloatingCard";
 
 interface GameBoardProps {
   gameId: number;
@@ -14,7 +16,7 @@ interface GameBoardProps {
   isOffline: boolean;
 }
 
-export default function GameBoard({
+function GameBoardContent({
   gameId,
   playerId,
   playerName,
@@ -32,6 +34,7 @@ export default function GameBoard({
   const moveStack = isOffline ? practice.moveStack : online.moveStack;
   const [editingName, setEditingName] = useState(playerName);
   const [renameSaving, setRenameSaving] = useState(false);
+  const { dragState, floatingCardRef, cancelDrag, completeDrag } = useCardDragContext();
 
   useEffect(() => {
     setEditingName(playerName);
@@ -121,10 +124,25 @@ export default function GameBoard({
         <CenterStacks
           centerStacks={gameState.center_stacks}
           onCardDrop={(payload) => {
-            if (!payload) return;
-            if (payload.subCards.length > 1) return; // center accepts single card
+            if (!payload) {
+              // Invalid drop - cancel drag if active
+              if (dragState.isDragging) {
+                cancelDrag();
+              }
+              return;
+            }
+            if (payload.subCards.length > 1) {
+              // Invalid drop - center accepts single card only
+              if (dragState.isDragging) {
+                cancelDrag();
+              }
+              return;
+            }
             if (payload.card) {
               playCard(payload.card, "center", payload.card.suit);
+              if (dragState.isDragging) {
+                completeDrag();
+              }
             }
           }}
         />
@@ -138,16 +156,28 @@ export default function GameBoard({
               onDrawDeck={drawDeck}
               onCallNerts={callNerts}
               onDropToStack={(stackIdx, payload) => {
-                if (!payload) return;
+                if (!payload) {
+                  // Invalid drop - cancel drag if active
+                  if (dragState.isDragging) {
+                    cancelDrag();
+                  }
+                  return;
+                }
                 if (
                   payload.source === "personal" &&
                   payload.fromStack !== undefined
                 ) {
                   moveStack(payload.fromStack, stackIdx, payload.count || 1);
+                  if (dragState.isDragging) {
+                    completeDrag();
+                  }
                   return;
                 }
                 if (payload.card) {
                   playCard(payload.card, "personal", stackIdx);
+                  if (dragState.isDragging) {
+                    completeDrag();
+                  }
                 }
               }}
               onDragStartPayload={(p) => p}
@@ -155,6 +185,15 @@ export default function GameBoard({
           ))}
         </div>
       </div>
+      <FloatingCard dragState={dragState} floatingCardRef={floatingCardRef} />
     </div>
+  );
+}
+
+export default function GameBoard(props: GameBoardProps) {
+  return (
+    <CardDragProvider>
+      <GameBoardContent {...props} />
+    </CardDragProvider>
   );
 }

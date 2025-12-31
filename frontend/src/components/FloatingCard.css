@@ -1,0 +1,14 @@
+.floating-card-container {
+  user-select: none;
+  pointer-events: none;
+}
+
+.floating-card {
+  width: 88px;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  user-select: none;
+  pointer-events: none;
+}
+

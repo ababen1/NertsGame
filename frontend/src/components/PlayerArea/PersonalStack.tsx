@@ -9,6 +9,8 @@ import {
   PickContext,
   DropTarget,
 } from "../../utils/solitiareFuncs";
+import { useCardDragContext } from "../../contexts/CardDragContext";
+import { useRef } from "react";
 
 interface PersonalStackProps {
   stack: Card[];
@@ -25,6 +27,9 @@ export default function PersonalStack({
   onDragStartPayload,
   pickContext,
 }: PersonalStackProps) {
+  const { startDrag, cancelDrag, completeDrag, dragState } = useCardDragContext();
+  const isDraggingFromHere = useRef(false);
+
   const parsePayload = (e: React.DragEvent) => {
     try {
       const data = e.dataTransfer.getData("application/json");
@@ -63,6 +68,49 @@ export default function PersonalStack({
       onDrop={(e) => {
         e.preventDefault();
         const payload = parsePayload(e);
+        
+        // Handle custom drag (click-to-drag)
+        if (dragState.isDragging && dragState.payload) {
+          const customPayload = dragState.payload;
+          if (customPayload) {
+            // For stacks, we need to check the bottom card, not the top card
+            let cardToCheck = customPayload.card;
+            if (
+              customPayload.source === "personal" &&
+              customPayload.fromStack !== undefined &&
+              customPayload.count &&
+              customPayload.count > 1 &&
+              pickContext.personalStacks
+            ) {
+              // Get the source stack and find the bottom card of the sequence
+              const sourceStack = pickContext.personalStacks[customPayload.fromStack];
+              if (sourceStack && sourceStack.length >= customPayload.count) {
+                const startIdx = sourceStack.length - customPayload.count;
+                const sequence = sourceStack.slice(startIdx);
+                // Bottom card is the last card in the sequence
+                cardToCheck = sequence[0];
+              }
+            }
+            // Create a modified payload with the bottom card for validation
+            const validationPayload: DragPayload = {
+              ...customPayload,
+              card: cardToCheck,
+            };
+            const target: DropTarget = { type: "personal", stack };
+            if (!isDroppable(validationPayload, target)) {
+              // Invalid drop - return card to original position
+              cancelDrag();
+              return;
+            }
+            // Valid drop
+            onDrop(customPayload);
+            completeDrag();
+            isDraggingFromHere.current = false;
+            return;
+          }
+        }
+
+        // Handle HTML5 drag (fallback)
         if (payload) {
           // For stacks, we need to check the bottom card, not the top card
           let cardToCheck = payload.card;
@@ -95,6 +143,55 @@ export default function PersonalStack({
         }
         onDrop(payload);
       }}
+      onMouseUp={(e) => {
+        // Handle drop on mouse up for click-to-drag
+        if (dragState.isDragging && dragState.payload) {
+          // Check if we're over this stack
+          const target = document.elementFromPoint(e.clientX, e.clientY);
+          const isOverThisStack = target && target.closest(`.personal-stack`);
+          
+          if (isOverThisStack) {
+            // We're over this stack - validate and drop
+            const customPayload = dragState.payload;
+            if (customPayload) {
+              // For stacks, we need to check the bottom card, not the top card
+              let cardToCheck = customPayload.card;
+              if (
+                customPayload.source === "personal" &&
+                customPayload.fromStack !== undefined &&
+                customPayload.count &&
+                customPayload.count > 1 &&
+                pickContext.personalStacks
+              ) {
+                // Get the source stack and find the bottom card of the sequence
+                const sourceStack = pickContext.personalStacks[customPayload.fromStack];
+                if (sourceStack && sourceStack.length >= customPayload.count) {
+                  const startIdx = sourceStack.length - customPayload.count;
+                  const sequence = sourceStack.slice(startIdx);
+                  // Bottom card is the last card in the sequence
+                  cardToCheck = sequence[0];
+                }
+              }
+              // Create a modified payload with the bottom card for validation
+              const validationPayload: DragPayload = {
+                ...customPayload,
+                card: cardToCheck,
+              };
+              const dropTarget: DropTarget = { type: "personal", stack };
+              if (!isDroppable(validationPayload, dropTarget)) {
+                // Invalid drop - return card to original position
+                cancelDrag();
+                isDraggingFromHere.current = false;
+                return;
+              }
+              // Valid drop
+              onDrop(customPayload);
+              completeDrag();
+              isDraggingFromHere.current = false;
+            }
+          }
+        }
+      }}
     >
       {stack.length > 0 ? (
         <div className="stack-fan">
@@ -122,8 +219,22 @@ export default function PersonalStack({
                 style={{
                   top: cardIdx * 14,
                   zIndex: cardIdx,
+                  cursor: shouldAllowDrag ? "grab" : "default",
+                }}
+                onMouseDown={(e) => {
+                  if (!shouldAllowDrag || e.button !== 0) return; // Only left click
+                  e.preventDefault();
+                  const finalPayload = onDragStartPayload(payload);
+                  const element = e.currentTarget;
+                  startDrag(finalPayload, card, element, e.nativeEvent);
+                  isDraggingFromHere.current = true;
                 }}
                 onDragStart={(e) => {
+                  // Keep HTML5 drag as fallback, but prefer click-to-drag
+                  if (dragState.isDragging) {
+                    e.preventDefault();
+                    return;
+                  }
                   if (!shouldAllowDrag) {
                     e.preventDefault();
                     return;

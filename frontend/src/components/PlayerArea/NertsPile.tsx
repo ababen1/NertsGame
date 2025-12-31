@@ -3,6 +3,7 @@ import { cardAssetPath } from "../../utils/cardAsset";
 import { DragPayload } from "./types";
 import "./PlayerArea.css";
 import { isPickable, PickContext } from "../../utils/solitiareFuncs";
+import { useCardDragContext } from "../../contexts/CardDragContext";
 
 interface NertsPileProps {
   nertsPile: Card[] | undefined;
@@ -21,6 +22,8 @@ export default function NertsPile({
   onDragStartPayload,
   pickContext,
 }: NertsPileProps) {
+  const { startDrag, dragState } = useCardDragContext();
+  
   return (
     <div className="nerts-section">
       <div className="nerts-pile">
@@ -43,7 +46,22 @@ export default function NertsPile({
                   key="nerts-top"
                   className="card-img nerts-card small"
                   draggable={isPickablePayload}
+                  style={{
+                    cursor: isPickablePayload ? "grab" : "default",
+                  }}
+                  onMouseDown={(e) => {
+                    if (!isPickablePayload || e.button !== 0) return; // Only left click
+                    e.preventDefault();
+                    const finalPayload = onDragStartPayload(payload);
+                    const element = e.currentTarget;
+                    startDrag(finalPayload, top, element, e.nativeEvent);
+                  }}
                   onDragStart={(e) => {
+                    // Keep HTML5 drag as fallback
+                    if (dragState.isDragging) {
+                      e.preventDefault();
+                      return;
+                    }
                     if (!isPickablePayload) {
                       e.preventDefault();
                       return;

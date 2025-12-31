@@ -9,6 +9,8 @@ import {
   PickContext,
   getCurrentTotalScore,
 } from "../../utils/solitiareFuncs";
+import { useCardDragContext } from "../../contexts/CardDragContext";
+import { useState, useEffect } from "react";
 
 interface PlayerAreaProps {
   player: PlayerState;
@@ -27,6 +29,9 @@ export default function PlayerArea({
   onDropToStack,
   onDragStartPayload,
 }: PlayerAreaProps) {
+  const { startDrag, cancelDrag, completeDrag, dragState } = useCardDragContext();
+  const [isPeekingDeck, setIsPeekingDeck] = useState(false);
+  
   // Calculate current page display from deck and deck_page
   // Page 0 = no cards displayed, Page 1 = first 3 cards, Page 2 = next 3 cards, etc.
   const deck = player.deck || [];
@@ -42,6 +47,11 @@ export default function PlayerArea({
   // Page 0 shows nothing (deckDisplay is empty array)
   const playableCard =
     deckDisplay.length > 0 ? deckDisplay[deckDisplay.length - 1] : null;
+  
+  // Get the card below the playable card for peek
+  const peekCard = playableCard && deckDisplay.length > 1 
+    ? deckDisplay[deckDisplay.length - 2] 
+    : null;
 
   const canCallNerts = player.nerts_pile_count === 0;
 
@@ -50,6 +60,13 @@ export default function PlayerArea({
     nertsPile: player.nerts_pile,
     deckTopCard: playableCard,
   };
+
+  // Stop peeking when drag completes or cancels
+  useEffect(() => {
+    if (!dragState.isDragging && isPeekingDeck) {
+      setIsPeekingDeck(false);
+    }
+  }, [dragState.isDragging, isPeekingDeck]);
 
   return (
     <div className={`player-area ${isCurrentPlayer ? "current-player" : ""}`}>
@@ -94,23 +111,63 @@ export default function PlayerArea({
                   };
                   const isPickablePayload = isPickable(payload, pickContext);
                   return (
-                    <img
-                      className="card-img playable-card small"
-                      draggable={isPickablePayload}
-                      onDragStart={(e) => {
-                        if (!isPickablePayload) {
+                    <div style={{ position: "relative" }}>
+                      {/* Peek card (shown below when dragging) */}
+                      {isPeekingDeck && peekCard && (
+                        <img
+                          className="card-img playable-card small"
+                          src={cardAssetPath(peekCard)}
+                          alt={peekCard.display}
+                          style={{
+                            position: "absolute",
+                            top: "8px",
+                            left: 0,
+                            opacity: 0.9,
+                            zIndex: 1,
+                          }}
+                        />
+                      )}
+                      {/* Playable card */}
+                      <img
+                        className="card-img playable-card small"
+                        draggable={isPickablePayload}
+                        style={{
+                          position: "relative",
+                          zIndex: 2,
+                          cursor: isPickablePayload ? "grab" : "default",
+                        }}
+                        onMouseDown={(e) => {
+                          if (!isPickablePayload || e.button !== 0) return; // Only left click
                           e.preventDefault();
-                          return;
-                        }
-                        const finalPayload = onDragStartPayload(payload);
-                        e.dataTransfer.setData(
-                          "application/json",
-                          JSON.stringify(finalPayload)
-                        );
-                      }}
-                      src={cardAssetPath(playableCard)}
-                      alt={playableCard.display}
-                    />
+                          const finalPayload = onDragStartPayload(payload);
+                          const element = e.currentTarget;
+                          startDrag(finalPayload, playableCard, element, e.nativeEvent);
+                          setIsPeekingDeck(true);
+                        }}
+                        onDragStart={(e) => {
+                          // Keep HTML5 drag as fallback
+                          if (dragState.isDragging) {
+                            e.preventDefault();
+                            return;
+                          }
+                          if (!isPickablePayload) {
+                            e.preventDefault();
+                            return;
+                          }
+                          const finalPayload = onDragStartPayload(payload);
+                          e.dataTransfer.setData(
+                            "application/json",
+                            JSON.stringify(finalPayload)
+                          );
+                          setIsPeekingDeck(true);
+                        }}
+                        onDragEnd={() => {
+                          setIsPeekingDeck(false);
+                        }}
+                        src={cardAssetPath(playableCard)}
+                        alt={playableCard.display}
+                      />
+                    </div>
                   );
                 })()}
             </div>
