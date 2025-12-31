@@ -489,7 +489,11 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       const player = prev.players[playerId];
 
       // Calculate the current round's score
-      const roundScore = calculateRoundScore(player);
+      let roundScore = calculateRoundScore(player);
+
+      // Add 40 point bonus for first player to call nerts
+      // In offline practice, the player always calls nerts first
+      roundScore += 40;
 
       // Add round score to the score array
       const newScoreArray = [...player.score, roundScore];

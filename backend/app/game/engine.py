@@ -78,6 +78,7 @@ class GameEngine:
         self.current_round = 1
         self.status = 'waiting'  # waiting, active, finished
         self.winner_id: Optional[int] = None
+        self.first_nerts_caller: Optional[int] = None  # Track who called nerts first in current round
         
         # Center shared stacks (4 stacks, one per suit, A→K)
         self.center_stacks: Dict[Suit, List[Card]] = {
@@ -95,6 +96,9 @@ class GameEngine:
         
         # Reset center stacks
         self.center_stacks = {suit: [] for suit in Suit}
+        
+        # Reset first nerts caller for new round
+        self.first_nerts_caller = None
         
         # Deal cards to each player
         for player_id, player_state in self.players.items():
@@ -318,6 +322,10 @@ class GameEngine:
         if player.nerts_pile:
             return False, "Nerts pile must be empty to call NERTS!"
         
+        # Track first caller for 40 point bonus
+        if self.first_nerts_caller is None:
+            self.first_nerts_caller = player_id
+        
         # End the round
         self._end_round()
         
@@ -334,6 +342,11 @@ class GameEngine:
         # Calculate round score for each player and add to their score array
         for player_id, player in self.players.items():
             round_score = self._calculate_round_score(player)
+            
+            # Add 40 point bonus for first player to call nerts
+            if player_id == self.first_nerts_caller:
+                round_score += 40
+            
             player.score.append(round_score)
         
         # Check for winner (100 points total)
@@ -374,6 +387,7 @@ class GameEngine:
             'current_round': self.current_round,
             'status': self.status,
             'winner_id': self.winner_id,
+            'first_nerts_caller': self.first_nerts_caller,
             'center_stacks': {
                 suit.value: [card.to_dict() for card in stack]
                 for suit, stack in self.center_stacks.items()
@@ -393,6 +407,7 @@ class GameEngine:
         engine.current_round = data['current_round']
         engine.status = data['status']
         engine.winner_id = data.get('winner_id')
+        engine.first_nerts_caller = data.get('first_nerts_caller')
         
         # Restore center stacks
         for suit_str, cards_data in data['center_stacks'].items():
