@@ -20,7 +20,8 @@ export function useGameSocket(
     }
 
     const newSocket = io("http://localhost:5000", {
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
+      upgrade: true,
     });
 
     newSocket.on("connect", () => {

@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 db = SQLAlchemy()
-socketio = SocketIO(cors_allowed_origins=os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(','))
+cors_origins_env = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://192.168.128.196:5173')
+cors_origins = cors_origins_env.split(',')
+socketio = SocketIO(cors_allowed_origins=cors_origins)
 migrate = Migrate()
 
 
@@ -21,8 +23,9 @@ def create_app():
 
     # Initialize extensions
     db.init_app(app)
-    CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')}})
-    socketio.init_app(app, cors_allowed_origins=os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(','))
+    cors_origins_app = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://192.168.128.196:5173').split(',')
+    CORS(app, resources={r"/*": {"origins": cors_origins_app}})
+    socketio.init_app(app, cors_allowed_origins=cors_origins_app)
     migrate.init_app(app, db)
 
     # Register blueprints

@@ -1,4 +1,5 @@
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask import request
 from app import db
 from app.models.game import Game, GamePlayer
 from app.game.engine import GameEngine
@@ -7,6 +8,10 @@ import json
 
 def register_socketio_events(socketio: SocketIO):
     """Register all WebSocket event handlers"""
+    
+    @socketio.on_error_default
+    def default_error_handler(e):
+        print(f"Socket.IO error: {e}")
     
     @socketio.on('connect')
     def handle_connect():
