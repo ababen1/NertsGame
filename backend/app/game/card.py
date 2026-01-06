@@ -80,11 +80,15 @@ class Card:
         return cls(suit, rank)
 
     def can_play_on_center_stack(self, top_card: Optional['Card'], target_suit: Suit) -> bool:
-        """Check if this card can be played on a center stack (A→K, same suit). Must start with matching Ace."""
-        if self.suit != target_suit:
-            return False
+        """Check if this card can be played on a center stack (A→K, same suit). 
+        If stack is empty, any ace can be placed (ace's suit determines stack suit).
+        If stack has cards, suit must match the first card's suit."""
         if top_card is None:
+            # Empty stack - accept any ace (suit doesn't matter, ace determines stack suit)
             return self.rank == Rank.ACE
+        # Stack has cards - suit must match the first card's suit and follow sequence
+        if self.suit != top_card.suit:
+            return False
         return int(self.rank) == int(top_card.rank) + 1
 
     def can_play_on_personal_stack(self, top_card: Optional['Card']) -> bool:

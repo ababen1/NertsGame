@@ -11,6 +11,13 @@
   text-align: center;
 }
 
+/* Hide h2 on mobile if needed, or remove entirely */
+@media (max-width: 768px) {
+  .center-stacks h2 {
+    display: none;
+  }
+}
+
 .stacks-container {
   display: grid;
   grid-template-columns: repeat(4, 100px);
@@ -68,8 +75,11 @@
 }
 
 .empty-card {
-  color: #ccc;
+  width: 80px;
+  height: 112px;
   border: 2px dashed #ccc;
+  border-radius: 6px;
+  background: transparent;
 }
 
 .stack-count {

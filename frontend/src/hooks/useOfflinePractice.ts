@@ -47,10 +47,14 @@ function rankDisplay(rank: Rank, suit: Suit) {
 function canPlayOnCenter(
   card: Card,
   top: Card | undefined | null,
-  target: Suit
+  _target: Suit // Target is for placement location, not validation
 ) {
-  if (card.suit !== target) return false;
-  if (!top) return card.rank === 1;
+  // If stack is empty, accept any ace (suit doesn't matter - it will determine the stack's suit)
+  if (!top) {
+    return card.rank === 1;
+  }
+  // If stack has cards, suit must match the first card's suit and card must follow sequence
+  if (card.suit !== top.suit) return false;
   return card.rank === top.rank + 1;
 }
 
@@ -400,9 +404,11 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         const player = prev.players[playerId];
         let next = prev;
         if (targetType === "center") {
-          const suit = target as Suit;
+          const suit = target as Suit; // This is the slot's suit key (where the card was dropped)
           const stack = prev.center_stacks[suit];
-          const top = stack[stack.length - 1];
+          const top = stack.length > 0 ? stack[stack.length - 1] : undefined;
+          // Validation: canPlayOnCenter checks suit against top card's suit (if exists) or allows any ace if empty
+          // The suit parameter is just for placement location, not validation
           if (!canPlayOnCenter(card, top, suit)) return prev;
           next = removeFromPlayer(next, playerId, card);
           const newStack = [...stack, card];

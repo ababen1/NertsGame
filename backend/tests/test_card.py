@@ -40,22 +40,26 @@ def test_card_from_dict():
 
 def test_card_center_stack_validation():
     """Test center stack placement validation"""
-    # Can place Ace on empty stack
-    ace = Card(Suit.HEARTS, Rank.ACE)
-    assert ace.can_play_on_center_stack(None, Suit.HEARTS) == True
-    assert ace.can_play_on_center_stack(None, Suit.CLUBS) == False
+    # Can place any Ace on empty stack (ace's suit determines stack suit)
+    ace_hearts = Card(Suit.HEARTS, Rank.ACE)
+    assert ace_hearts.can_play_on_center_stack(None, Suit.HEARTS) == True
+    assert ace_hearts.can_play_on_center_stack(None, Suit.CLUBS) == True  # Any ace on empty stack
     
-    # Can place 2 on Ace
+    ace_clubs = Card(Suit.CLUBS, Rank.ACE)
+    assert ace_clubs.can_play_on_center_stack(None, Suit.HEARTS) == True  # Any ace on empty stack
+    assert ace_clubs.can_play_on_center_stack(None, Suit.CLUBS) == True
+    
+    # Can place 2 on Ace (same suit)
     two = Card(Suit.HEARTS, Rank.TWO)
-    assert two.can_play_on_center_stack(ace, Suit.HEARTS) == True
+    assert two.can_play_on_center_stack(ace_hearts, Suit.HEARTS) == True
     
     # Cannot place 3 on Ace (must be sequential)
     three = Card(Suit.HEARTS, Rank.THREE)
-    assert three.can_play_on_center_stack(ace, Suit.HEARTS) == False
+    assert three.can_play_on_center_stack(ace_hearts, Suit.HEARTS) == False
     
-    # Cannot place different suit
+    # Cannot place different suit on non-empty stack
     spade_two = Card(Suit.SPADES, Rank.TWO)
-    assert spade_two.can_play_on_center_stack(ace, Suit.HEARTS) == False
+    assert spade_two.can_play_on_center_stack(ace_hearts, Suit.HEARTS) == False
 
 
 def test_card_personal_stack_validation():

@@ -139,7 +139,10 @@ function GameBoardContent({
               return;
             }
             if (payload.card) {
-              playCard(payload.card, "center", payload.card.suit);
+              // Use targetSuit from payload if available (determined by which stack ace was dropped on)
+              // Otherwise fall back to card's suit
+              const targetSuit = (payload as DragPayload & { targetSuit?: Suit }).targetSuit || payload.card.suit;
+              playCard(payload.card, "center", targetSuit);
               if (dragState.isDragging) {
                 completeDrag();
               }
