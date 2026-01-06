@@ -144,8 +144,53 @@ export default function PersonalStack({
         }
         onDrop(payload);
       }}
+      onTouchEnd={(e) => {
+        // Handle drop on touch end for mobile
+        if (dragState.isDragging && dragState.payload && !isDraggingFromHere.current) {
+          e.stopPropagation();
+          e.preventDefault();
+          const touch = e.changedTouches[0];
+          const target = document.elementFromPoint(touch.clientX, touch.clientY);
+          const isOverThisStack = target && target.closest(`.personal-stack`);
+          
+          if (isOverThisStack) {
+            const customPayload = dragState.payload;
+            if (customPayload) {
+              // For stacks, we need to check the bottom card, not the top card
+              let cardToCheck = customPayload.card;
+              if (
+                customPayload.source === "personal" &&
+                customPayload.fromStack !== undefined &&
+                customPayload.count &&
+                customPayload.count > 1 &&
+                pickContext.personalStacks
+              ) {
+                const sourceStack = pickContext.personalStacks[customPayload.fromStack];
+                if (sourceStack && sourceStack.length >= customPayload.count) {
+                  const startIdx = sourceStack.length - customPayload.count;
+                  const sequence = sourceStack.slice(startIdx);
+                  cardToCheck = sequence[0];
+                }
+              }
+              const validationPayload: DragPayload = {
+                ...customPayload,
+                card: cardToCheck,
+              };
+              const dropTarget: DropTarget = { type: "personal", stack };
+              if (!isDroppable(validationPayload, dropTarget)) {
+                cancelDrag();
+                isDraggingFromHere.current = false;
+                return;
+              }
+              onDrop(customPayload);
+              completeDrag();
+              isDraggingFromHere.current = false;
+            }
+          }
+        }
+      }}
       onClick={(e) => {
-        // Handle drop on click for click-to-drag
+        // Handle drop on click for click-to-drag (desktop only)
         // Only handle if we're already dragging (not starting a new drag from this stack)
         if (dragState.isDragging && dragState.payload && !isDraggingFromHere.current) {
           e.stopPropagation();
@@ -220,9 +265,28 @@ export default function PersonalStack({
                   cursor: shouldAllowDrag ? "grab" : "default",
                 }}
                 onMouseDown={(e) => {
+                  // On mobile, use touch events instead
+                  if ('ontouchstart' in window) return;
+                  
                   if (!shouldAllowDrag || e.button !== 0) return; // Only left click
                   
                   // If already dragging, don't start a new drag - let the drop handler manage it
+                  if (dragState.isDragging) {
+                    return;
+                  }
+                  
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const finalPayload = onDragStartPayload(payload);
+                  const element = e.currentTarget;
+                  startDrag(finalPayload, card, element, e.nativeEvent);
+                  isDraggingFromHere.current = true;
+                }}
+                onTouchStart={(e) => {
+                  // On mobile, use touch and drag (not click-to-drag)
+                  if (!shouldAllowDrag) return;
+                  
+                  // If already dragging, don't start a new drag
                   if (dragState.isDragging) {
                     return;
                   }

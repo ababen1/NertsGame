@@ -50,7 +50,18 @@ export default function NertsPile({
                     cursor: isPickablePayload ? "grab" : "default",
                   }}
                   onMouseDown={(e) => {
+                    // On mobile, use touch events instead
+                    if ('ontouchstart' in window) return;
+                    
                     if (!isPickablePayload || e.button !== 0) return; // Only left click
+                    e.preventDefault();
+                    const finalPayload = onDragStartPayload(payload);
+                    const element = e.currentTarget;
+                    startDrag(finalPayload, top, element, e.nativeEvent);
+                  }}
+                  onTouchStart={(e) => {
+                    // On mobile, use touch and drag
+                    if (!isPickablePayload) return;
                     e.preventDefault();
                     const finalPayload = onDragStartPayload(payload);
                     const element = e.currentTarget;

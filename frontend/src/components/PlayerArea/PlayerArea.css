@@ -265,3 +265,75 @@
 .card-img.tiny {
   width: 48px;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .player-area {
+    padding: 10px;
+  }
+
+  .player-layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .side-column {
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 8px;
+  }
+
+  .deck-button {
+    width: 80px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .card-img {
+    width: 50px;
+  }
+
+  .card-img.small {
+    width: 40px;
+  }
+
+  .card-img.tiny {
+    width: 32px;
+  }
+
+  .stacks-grid {
+    grid-template-columns: repeat(3, 60px);
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .stack-fan {
+    width: 50px;
+    min-height: 80px;
+  }
+
+  .personal-stack {
+    min-height: 80px;
+  }
+
+  .nerts-section {
+    padding: 8px;
+  }
+
+  .nerts-button {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .player-header h3 {
+    font-size: 14px;
+  }
+
+  .player-score {
+    font-size: 14px;
+  }
+
+  .personal-stacks h4 {
+    font-size: 12px;
+  }
+}

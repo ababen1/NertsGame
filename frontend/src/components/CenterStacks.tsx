@@ -110,8 +110,46 @@ export default function CenterStacks({
                 };
                 onCardDrop(payloadWithTarget);
               }}
+              onTouchEnd={(e) => {
+                // Handle drop on touch end for mobile
+                if (dragState.isDragging && dragState.payload) {
+                  e.preventDefault();
+                  const touch = e.changedTouches[0];
+                  const target = document.elementFromPoint(
+                    touch.clientX,
+                    touch.clientY
+                  );
+                  const isOverThisStack =
+                    target &&
+                    target.closest(`.center-stack[data-suit="${suit}"]`);
+
+                  if (isOverThisStack) {
+                    const customPayload = dragState.payload;
+                    const centerStack: CenterStack = {
+                      suit,
+                      cards: stack,
+                    };
+                    const dropTarget: DropTarget = {
+                      type: "center",
+                      stack: centerStack,
+                    };
+                    if (!isDroppable(customPayload, dropTarget)) {
+                      cancelDrag();
+                      return;
+                    }
+                    const payloadWithTarget: DragPayload & {
+                      targetSuit?: Suit;
+                    } = {
+                      ...customPayload,
+                      targetSuit: suit,
+                    };
+                    onCardDrop(payloadWithTarget);
+                    completeDrag();
+                  }
+                }
+              }}
               onMouseUp={(e) => {
-                // Handle drop on mouse up for click-to-drag
+                // Handle drop on mouse up for click-to-drag (desktop only)
                 if (dragState.isDragging && dragState.payload) {
                   // Check if we're over this center stack
                   const target = document.elementFromPoint(

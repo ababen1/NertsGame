@@ -145,3 +145,45 @@
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .game-board {
+    padding: 10px;
+  }
+
+  .game-header {
+    padding: 12px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .game-header h1 {
+    font-size: 18px;
+  }
+
+  .game-info {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .rename-area {
+    width: 100%;
+  }
+
+  .rename-area input {
+    flex: 1;
+    font-size: 14px;
+  }
+
+  .game-content {
+    gap: 10px;
+  }
+
+  .players-area {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

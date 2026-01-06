@@ -26,19 +26,27 @@ export function useCardDrag() {
   });
 
   const floatingCardRef = useRef<HTMLDivElement | null>(null);
+  
+  // Detect if device is mobile/touch
+  const isTouchDevice = useRef(
+    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  );
 
   const startDrag = useCallback((
     payload: DragPayload,
     card: Card,
     element: HTMLElement,
-    event: React.MouseEvent
+    event: React.MouseEvent | React.TouchEvent
   ) => {
     const rect = element.getBoundingClientRect();
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+    
     setDragState({
       isDragging: true,
       payload,
-      mouseX: event.clientX,
-      mouseY: event.clientY,
+      mouseX: clientX,
+      mouseY: clientY,
       card,
       originalElement: element,
       originalPosition: {
@@ -97,7 +105,7 @@ export function useCardDrag() {
     });
   }, [dragState.originalElement]);
 
-  // Update mouse position during drag
+  // Update mouse/touch position during drag
   useEffect(() => {
     if (!dragState.isDragging) return;
 
@@ -109,18 +117,52 @@ export function useCardDrag() {
       }));
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault(); // Prevent scrolling while dragging
+      if (e.touches.length > 0) {
+        setDragState((prev) => ({
+          ...prev,
+          mouseX: e.touches[0].clientX,
+          mouseY: e.touches[0].clientY,
+        }));
+      }
+    };
+
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       cancelDrag();
     };
 
     const handleMouseUp = (e: MouseEvent) => {
+      // On mobile, use touch events instead
+      if (isTouchDevice.current) return;
+      
       // Don't auto-cancel on mouseup - let the card continue following the cursor
       // Component-level handlers (onMouseUp in PersonalStack, CenterStacks) will handle drops
       // Right-click is handled separately in handleContextMenu
     };
     
+    const handleTouchEnd = (e: TouchEvent) => {
+      // On mobile, touch end should cancel drag if not over valid drop target
+      if (!isTouchDevice.current) return;
+      
+      const touch = e.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const isValidDropTarget = target && (
+        target.closest(".personal-stack") ||
+        target.closest(".center-stack") ||
+        target.closest(".nerts-pile")
+      );
+      
+      if (!isValidDropTarget) {
+        cancelDrag();
+      }
+    };
+    
     const handleMouseDown = (e: MouseEvent) => {
+      // Only handle mouse events on non-touch devices
+      if (isTouchDevice.current) return;
+      
       // If clicking while dragging and not over a card/stack, cancel the drag
       // This allows clicking on empty space to cancel an active drag
       // But don't cancel if clicking on a card (might be starting a new drag)
@@ -166,8 +208,10 @@ export function useCardDrag() {
     };
 
     window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("contextmenu", handleContextMenu);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchend", handleTouchEnd);
     window.addEventListener("mousedown", handleMouseDown);
 
     // Hide original card during drag
@@ -177,8 +221,10 @@ export function useCardDrag() {
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("mousedown", handleMouseDown);
       if (dragState.originalElement) {
         dragState.originalElement.style.opacity = "";

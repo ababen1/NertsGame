@@ -87,3 +87,38 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .center-stacks {
+    padding: 10px;
+  }
+
+  .center-stacks h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .stacks-container {
+    grid-template-columns: repeat(4, 60px);
+    gap: 8px;
+  }
+
+  .center-stack {
+    width: 60px;
+    padding: 8px;
+  }
+
+  .stack-label {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .card-img {
+    width: 50px;
+  }
+
+  .stack-cards {
+    min-height: 40px;
+  }
+}
