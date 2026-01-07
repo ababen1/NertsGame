@@ -1,0 +1,256 @@
+.room-lobby {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.room-lobby-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.5rem;
+}
+
+.room-lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.room-name-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.room-name-section h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.room-name-input {
+  padding: 0.5rem 1rem;
+  font-size: 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  min-width: 200px;
+}
+
+.room-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.edit-name-btn,
+.save-name-btn,
+.cancel-name-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.edit-name-btn:hover,
+.save-name-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.cancel-name-btn {
+  background: rgba(255, 0, 0, 0.3);
+}
+
+.cancel-name-btn:hover {
+  background: rgba(255, 0, 0, 0.5);
+}
+
+.leave-room-btn {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 0, 0, 0.2);
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.leave-room-btn:hover {
+  background: rgba(255, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.room-lobby-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.players-list h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.player-card {
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.player-card.current-player {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.player-card.owner {
+  border-color: #ffd700;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.owner-badge {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 215, 0, 0.3);
+  border-radius: 4px;
+}
+
+.ready-status {
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.ready-status.ready {
+  background: rgba(0, 255, 0, 0.3);
+  color: #90ee90;
+}
+
+.ready-status.not-ready {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ready-toggle-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.ready-toggle-btn.ready {
+  background: #4caf50;
+  color: white;
+}
+
+.ready-toggle-btn.ready:hover {
+  background: #45a049;
+}
+
+.ready-toggle-btn.unready {
+  background: #ff9800;
+  color: white;
+}
+
+.ready-toggle-btn.unready:hover {
+  background: #e68900;
+}
+
+.kick-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 0, 0, 0.3);
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.kick-btn:hover {
+  background: rgba(255, 0, 0, 0.5);
+}
+
+.owner-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.start-game-btn {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 250px;
+}
+
+.start-game-btn.enabled {
+  background: #4caf50;
+  color: white;
+}
+
+.start-game-btn.enabled:hover {
+  background: #45a049;
+  transform: scale(1.05);
+}
+
+.start-game-btn.disabled {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.ready-status-info {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+

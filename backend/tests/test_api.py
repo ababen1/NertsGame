@@ -8,13 +8,14 @@ def test_create_player(client):
     """Test creating a player"""
     response = client.post(
         '/api/players',
-        data=json.dumps({'username': 'testuser'}),
+        data=json.dumps({'username': 'testuser', 'device_id': 'test-device-id-1'}),
         content_type='application/json'
     )
     
     assert response.status_code == 201
     data = json.loads(response.data)
     assert data['username'] == 'testuser'
+    assert data['device_id'] == 'test-device-id-1'
     assert data['email'] is None
 
 
@@ -45,7 +46,7 @@ def test_create_game(client):
 def test_join_game(client, sample_game, sample_player):
     """Test joining a game"""
     # Create another player
-    player2 = Player(username='player2')
+    player2 = Player(username='player2', device_id='test-device-id-2')
     from app import db
     db.session.add(player2)
     db.session.commit()

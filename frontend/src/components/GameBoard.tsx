@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { useGameSocket } from "../hooks/useGameSocket";
 import { useOfflinePractice } from "../hooks/useOfflinePractice";
-import PlayerArea from "./PlayerArea";
+import PlayerArea, { DragPayload } from "./PlayerArea";
 import CenterStacks from "./CenterStacks";
 import "./GameBoard.css";
-import { CardDragProvider, useCardDragContext } from "../contexts/CardDragContext";
+import {
+  CardDragProvider,
+  useCardDragContext,
+} from "../contexts/CardDragContext";
 import FloatingCard from "./FloatingCard";
+import { Suit } from "../types/game";
 
 interface GameBoardProps {
   gameId: number;
@@ -34,7 +38,8 @@ function GameBoardContent({
   const moveStack = isOffline ? practice.moveStack : online.moveStack;
   const [editingName, setEditingName] = useState(playerName);
   const [renameSaving, setRenameSaving] = useState(false);
-  const { dragState, floatingCardRef, cancelDrag, completeDrag } = useCardDragContext();
+  const { dragState, floatingCardRef, cancelDrag, completeDrag } =
+    useCardDragContext();
 
   useEffect(() => {
     setEditingName(playerName);
@@ -65,24 +70,11 @@ function GameBoardContent({
         <h1>
           {isOffline ? "Practice Mode" : `Game #${gameId}`} - Round{" "}
           {(() => {
-            // #region agent log
-            fetch(
-              "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  location: "GameBoard.tsx:64",
-                  message: "Displaying round number",
-                  data: { currentRound: gameState.current_round, isOffline },
-                  timestamp: Date.now(),
-                  sessionId: "debug-session",
-                  runId: "run1",
-                  hypothesisId: "E",
-                }),
-              }
-            ).catch(() => {});
-            // #endregion
+            console.log("[GameBoard] Displaying round number", {
+              currentRound: gameState.current_round,
+              isOffline,
+              timestamp: Date.now(),
+            });
             return gameState.current_round;
           })()}
         </h1>
@@ -141,7 +133,9 @@ function GameBoardContent({
             if (payload.card) {
               // Use targetSuit from payload if available (determined by which stack ace was dropped on)
               // Otherwise fall back to card's suit
-              const targetSuit = (payload as DragPayload & { targetSuit?: Suit }).targetSuit || payload.card.suit;
+              const targetSuit =
+                (payload as DragPayload & { targetSuit?: Suit }).targetSuit ||
+                payload.card.suit;
               playCard(payload.card, "center", targetSuit);
               if (dragState.isDragging) {
                 completeDrag();

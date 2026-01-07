@@ -28,7 +28,7 @@ def client(app):
 def sample_player(app):
     """Create a sample player for testing"""
     with app.app_context():
-        player = Player(username='testuser')
+        player = Player(username='testuser', device_id='test-device-id-sample')
         db.session.add(player)
         db.session.commit()
         return player

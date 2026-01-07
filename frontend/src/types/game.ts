@@ -45,6 +45,8 @@ export interface Game {
   max_players: number;
   current_round: number;
   winner_id: number | null;
+  owner_id: number | null;
+  name: string | null;
   players: GamePlayer[];
 }
 
@@ -62,4 +64,16 @@ export interface Player {
   id: number;
   username: string;
   email?: string | null;
+}
+
+export interface LobbyState {
+  game_id: number;
+  name: string | null;
+  owner_id: number | null;
+  players: Array<{
+    player_id: number;
+    username: string | null;
+    is_ready: boolean;
+    position: number;
+  }>;
 }

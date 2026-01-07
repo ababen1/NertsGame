@@ -1,109 +1,115 @@
-import { useState, useEffect } from 'react'
-import { Game, GamePlayer } from '../types/game'
-import './GameLobby.css'
+import { useState, useEffect } from "react";
+import { Game, GamePlayer } from "../types/game";
+import "./GameLobby.css";
 
 interface GameLobbyProps {
-  playerId: number
-  onJoinGame: (gameId: number) => void
+  playerId: number;
+  onJoinGame: (gameId: number) => void;
 }
 
 export default function GameLobby({ playerId, onJoinGame }: GameLobbyProps) {
-  const [games, setGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(false)
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadGames()
-  }, [])
+    loadGames();
+  }, []);
 
   const loadGames = async () => {
     try {
-      const response = await fetch('/api/games?status=waiting')
+      const response = await fetch("/api/games?status=waiting");
       if (response.ok) {
-        const data = await response.json()
-        setGames(data)
+        const data = await response.json();
+        setGames(data);
       }
     } catch (error) {
-      console.error('Failed to load games:', error)
+      console.error("Failed to load games:", error);
     }
-  }
+  };
 
   const createGame = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await fetch('/api/games', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ max_players: 6 }),
-      })
+      const response = await fetch("/api/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ max_players: 6, owner_id: playerId }),
+      });
 
       if (response.ok) {
-        const game = await response.json()
-        await joinGame(game.id)
+        const game = await response.json();
+        await joinGame(game.id);
       } else {
-        alert('Failed to create game')
+        alert("Failed to create game");
       }
     } catch (error) {
-      alert('Error creating game')
+      alert("Error creating game");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const joinGame = async (gameId: number) => {
-    setLoading(true)
+    setLoading(true);
     try {
       const response = await fetch(`/api/games/${gameId}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ player_id: playerId }),
-      })
+      });
 
       if (response.ok) {
-        onJoinGame(gameId)
+        onJoinGame(gameId);
       } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to join game')
+        const error = await response.json();
+        alert(error.error || "Failed to join game");
       }
     } catch (error) {
-      alert('Error joining game')
+      alert("Error joining game");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const startGame = async (gameId: number) => {
-    setLoading(true)
+    setLoading(true);
     try {
       const response = await fetch(`/api/games/${gameId}/start`, {
-        method: 'POST',
-      })
+        method: "POST",
+      });
 
       if (response.ok) {
-        onJoinGame(gameId)
+        onJoinGame(gameId);
       } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to start game')
+        const error = await response.json();
+        alert(error.error || "Failed to start game");
       }
     } catch (error) {
-      alert('Error starting game')
+      alert("Error starting game");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="lobby">
       <div className="lobby-header">
         <h1>🎮 Game Lobby</h1>
-        <button onClick={createGame} disabled={loading} className="create-game-btn">
-          {loading ? 'Loading...' : '+ Create New Game'}
+        <button
+          onClick={createGame}
+          disabled={loading}
+          className="create-game-btn"
+        >
+          {loading ? "Loading..." : "+ Create New Game"}
         </button>
       </div>
 
       <div className="games-list">
         <h2>Available Games</h2>
         {games.length === 0 ? (
-          <p className="no-games">No games available. Create one to get started!</p>
+          <p className="no-games">
+            No games available. Create one to get started!
+          </p>
         ) : (
           games.map((game) => (
             <div key={game.id} className="game-card">
@@ -115,7 +121,9 @@ export default function GameLobby({ playerId, onJoinGame }: GameLobbyProps) {
                 <p>Status: {game.status}</p>
               </div>
               <div className="game-actions">
-                {game.players.some((gp: GamePlayer) => gp.player_id === playerId) ? (
+                {game.players.some(
+                  (gp: GamePlayer) => gp.player_id === playerId
+                ) ? (
                   <button
                     onClick={() => onJoinGame(game.id)}
                     className="join-btn"
@@ -133,7 +141,9 @@ export default function GameLobby({ playerId, onJoinGame }: GameLobbyProps) {
                 ) : (
                   <span className="full-badge">Full</span>
                 )}
-                {game.players.some((gp: GamePlayer) => gp.player_id === playerId) &&
+                {game.players.some(
+                  (gp: GamePlayer) => gp.player_id === playerId
+                ) &&
                   game.players.length >= 2 && (
                     <button
                       onClick={() => startGame(game.id)}
@@ -149,6 +159,5 @@ export default function GameLobby({ playerId, onJoinGame }: GameLobbyProps) {
         )}
       </div>
     </div>
-  )
+  );
 }
-

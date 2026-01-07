@@ -11,7 +11,8 @@ load_dotenv()
 db = SQLAlchemy()
 cors_origins_env = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://192.168.128.196:5173')
 cors_origins = cors_origins_env.split(',')
-socketio = SocketIO(cors_allowed_origins=cors_origins)
+# Use threading async mode (no gevent/eventlet required)
+socketio = SocketIO(cors_allowed_origins=cors_origins, async_mode='threading')
 migrate = Migrate()
 
 
@@ -25,7 +26,7 @@ def create_app():
     db.init_app(app)
     cors_origins_app = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://192.168.128.196:5173').split(',')
     CORS(app, resources={r"/*": {"origins": cors_origins_app}})
-    socketio.init_app(app, cors_allowed_origins=cors_origins_app)
+    socketio.init_app(app, cors_allowed_origins=cors_origins_app, async_mode='threading')
     migrate.init_app(app, db)
 
     # Register blueprints

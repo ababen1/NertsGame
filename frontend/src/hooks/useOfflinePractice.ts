@@ -67,24 +67,9 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       // Prevent double initialization in React StrictMode for brand new games
       // If prev is null (brand new game) and we're already initializing, skip
       if (prev === null && isInitializingRef.current) {
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "useOfflinePractice.ts:61",
-              message: "initGame blocked by ref (brand new game)",
-              data: {},
-              timestamp: Date.now(),
-              sessionId: "debug-session",
-              runId: "post-fix",
-              hypothesisId: "FIX",
-            }),
-          }
-        ).catch(() => {});
-        // #endregion
+        console.log("[OfflinePractice] initGame blocked by ref (brand new game)", {
+          timestamp: Date.now(),
+        });
         return prev; // Return null to prevent state update
       }
 
@@ -92,28 +77,12 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       if (prev === null) {
         isInitializingRef.current = true;
       }
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "useOfflinePractice.ts:61",
-            message: "initGame called",
-            data: {
-              prevIsNull: prev === null,
-              prevRound: prev?.current_round,
-              playerId,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "run1",
-            hypothesisId: "A",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
+      console.log("[OfflinePractice] initGame called", {
+        prevIsNull: prev === null,
+        prevRound: prev?.current_round,
+        playerId,
+        timestamp: Date.now(),
+      });
 
       const deck = shuffle(buildDeck());
       const personalStacks: Card[][] = [];
@@ -134,28 +103,12 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         prev === null ||
         (previousScoreArray.length === 0 && prev && prev.current_round <= 1);
       const calculatedRound = isNewGame ? 1 : (prev?.current_round || 0) + 1;
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "useOfflinePractice.ts:75",
-            message: "Round calculation",
-            data: {
-              prevRound: prev?.current_round,
-              calculatedRound,
-              isNewGame: prev === null,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "run1",
-            hypothesisId: "B",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
+      console.log("[OfflinePractice] Round calculation", {
+        prevRound: prev?.current_round,
+        calculatedRound,
+        isNewGame: prev === null,
+        timestamp: Date.now(),
+      });
 
       const state: GameState = {
         game_id: 0,
@@ -182,47 +135,19 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
           },
         },
       };
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "useOfflinePractice.ts:98",
-            message: "initGame returning state",
-            data: {
-              finalRound: state.current_round,
-              prevWasNull: prev === null,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "run1",
-            hypothesisId: "C",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
+      console.log("[OfflinePractice] initGame returning state", {
+        finalRound: state.current_round,
+        prevWasNull: prev === null,
+        timestamp: Date.now(),
+      });
       return state;
     });
   }, [playerId]);
 
   useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7242/ingest/f5db1c29-c371-4701-9cab-8b57bf1cf498", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "useOfflinePractice.ts:102",
-        message: "useEffect calling initGame",
-        data: {},
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        runId: "post-fix",
-        hypothesisId: "D",
-      }),
-    }).catch(() => {});
-    // #endregion
+    console.log("[OfflinePractice] useEffect calling initGame", {
+      timestamp: Date.now(),
+    });
     initGame();
     // Reset the ref after a delay to allow state update to complete
     const timeoutId = setTimeout(() => {

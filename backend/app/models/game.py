@@ -14,6 +14,8 @@ class Game(db.Model):
     max_players = db.Column(db.Integer, default=6, nullable=False)
     current_round = db.Column(db.Integer, default=1, nullable=False)
     winner_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)  # Player who created the room
+    name = db.Column(db.String(100), nullable=True)  # Custom room name
     game_state = db.Column(JSON, nullable=False, default=dict)  # Stores full game state
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -29,6 +31,8 @@ class Game(db.Model):
             'max_players': self.max_players,
             'current_round': self.current_round,
             'winner_id': self.winner_id,
+            'owner_id': self.owner_id,
+            'name': self.name,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'players': [gp.to_dict() for gp in self.game_players],
