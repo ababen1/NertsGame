@@ -38,7 +38,18 @@ export default function GameLobby({ playerId, onJoinGame }: GameLobbyProps) {
 
       if (response.ok) {
         const game = await response.json();
-        await joinGame(game.id);
+        // Auto-join the creator immediately
+        const joinResponse = await fetch(`/api/games/${game.id}/join`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ player_id: playerId }),
+        });
+        if (joinResponse.ok) {
+          onJoinGame(game.id);
+        } else {
+          const error = await joinResponse.json();
+          alert(error.error || "Failed to join game");
+        }
       } else {
         alert("Failed to create game");
       }

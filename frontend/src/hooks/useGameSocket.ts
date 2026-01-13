@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { GameState, LobbyState } from "../types/game";
 
@@ -11,6 +11,12 @@ export function useGameSocket(
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
   const [connected, setConnected] = useState(false);
+  const lobbyStateRef = useRef<LobbyState | null>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    lobbyStateRef.current = lobbyState;
+  }, [lobbyState]);
 
   useEffect(() => {
     if (!enabled) {
@@ -132,6 +138,8 @@ export function useGameSocket(
     });
 
     newSocket.on("lobby_update", (state: LobbyState) => {
+      // Only update if we don't have a pending optimistic update
+      // The WebSocket update will have the correct state from server
       setLobbyState(state);
     });
 
@@ -260,6 +268,18 @@ export function useGameSocket(
   );
 
   const setReady = useCallback(async () => {
+    // Optimistic update: update local state immediately
+    const currentState = lobbyStateRef.current;
+    if (currentState) {
+      const updatedState = {
+        ...currentState,
+        players: currentState.players.map((p) =>
+          p.player_id === playerId ? { ...p, is_ready: !p.is_ready } : p
+        ),
+      };
+      setLobbyState(updatedState);
+    }
+    
     try {
       const response = await fetch(`/api/games/${gameId}/ready`, {
         method: "POST",
@@ -267,9 +287,14 @@ export function useGameSocket(
         body: JSON.stringify({ player_id: playerId }),
       });
       if (!response.ok) {
+        // Rollback on error - restore previous state
+        if (currentState) {
+          setLobbyState(currentState);
+        }
         const error = await response.json();
         throw new Error(error.error || "Failed to set ready status");
       }
+      // WebSocket will update with correct state, so we don't need to do anything here
     } catch (error: any) {
       console.error("Failed to set ready:", error);
       alert(error.message || "Failed to set ready status");

@@ -3,12 +3,14 @@ from flask import request
 from app import db
 from app.models.game import Game, GamePlayer
 from app.game.engine import GameEngine
+from sqlalchemy.orm import joinedload
 import json
 
 
 def broadcast_lobby_update(socketio: SocketIO, game_id: int):
     """Helper function to broadcast lobby state updates to all players in a game room"""
-    game = Game.query.get(game_id)
+    # Use joinedload to eagerly load players and avoid N+1 queries
+    game = Game.query.options(joinedload(Game.game_players).joinedload(GamePlayer.player)).get(game_id)
     if game and game.status == 'waiting':
         lobby_state = {
             'game_id': game.id,
@@ -93,8 +95,8 @@ def register_socketio_events(socketio: SocketIO):
             f.write(json.dumps({"location":"websocket/__init__.py:48","message":"Joined room, emitting joined_game","data":{"room":room},"timestamp":int(__import__('time').time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"2"}) + '\n')
         # #endregion
         
-        # Get game and check status
-        game = Game.query.get(game_id)
+        # Get game and check status - use eager loading to avoid N+1 queries
+        game = Game.query.options(joinedload(Game.game_players).joinedload(GamePlayer.player)).get(game_id)
         
         if game and game.status == 'waiting':
             # Send lobby state for waiting games

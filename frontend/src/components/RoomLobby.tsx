@@ -28,6 +28,9 @@ export default function RoomLobby({
       onGameStart();
     }
   }, [gameState, onGameStart]);
+  
+  // Also listen for game status changes via parent component
+  // This will be handled by the parent when gameState changes
   const [roomName, setRoomName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);

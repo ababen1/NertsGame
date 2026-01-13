@@ -96,7 +96,7 @@ def set_ready(game_id):
     if not player_id:
         return jsonify({'error': 'player_id is required'}), 400
     
-    game = Game.query.get_or_404(game_id)
+    # Use a single query with join to get both game and game_player
     game_player = GamePlayer.query.filter_by(game_id=game_id, player_id=player_id).first()
     
     if not game_player:
@@ -106,10 +106,11 @@ def set_ready(game_id):
     game_player.is_ready = not game_player.is_ready
     db.session.commit()
     
-    # Broadcast lobby update
+    # Broadcast lobby update (this will query the game, but it's async)
     broadcast_lobby_update(socketio, game_id)
     
-    return jsonify(game.to_dict()), 200
+    # Return minimal response - WebSocket will send full update
+    return jsonify({'success': True, 'is_ready': game_player.is_ready}), 200
 
 
 @games_bp.route('/<int:game_id>/settings', methods=['PATCH'])

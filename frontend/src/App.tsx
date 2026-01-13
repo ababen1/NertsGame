@@ -80,7 +80,7 @@ function App() {
     load().finally(() => setLoadingProfile(false));
   }, []);
 
-  // Check game status and show appropriate component
+  // Check game status once when gameId changes (WebSocket will handle updates)
   useEffect(() => {
     if (currentGameId && !isOffline) {
       const checkGameStatus = async () => {
@@ -94,10 +94,8 @@ function App() {
           console.error("Failed to fetch game status:", error);
         }
       };
+      // Only check once on mount - WebSocket will handle status changes
       checkGameStatus();
-      // Poll for status changes (or use WebSocket updates)
-      const interval = setInterval(checkGameStatus, 2000);
-      return () => clearInterval(interval);
     }
   }, [currentGameId, isOffline]);
 
@@ -214,16 +212,8 @@ function App() {
           playerId={player.id}
           onJoinGame={async (gameId) => {
             setCurrentGameId(gameId);
-            // Fetch game status to determine which component to show
-            try {
-              const response = await fetch(`/api/games/${gameId}`);
-              if (response.ok) {
-                const game = await response.json();
-                setGameStatus(game.status);
-              }
-            } catch (error) {
-              console.error("Failed to fetch game status:", error);
-            }
+            // Set initial status - WebSocket will update it when we join
+            setGameStatus("waiting");
           }}
         />
       </div>
