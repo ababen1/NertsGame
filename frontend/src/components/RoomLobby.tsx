@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { LobbyState } from "../types/game";
 import { useGameSocket } from "../hooks/useGameSocket";
 import "./RoomLobby.css";
 
@@ -129,10 +128,6 @@ export default function RoomLobby({
       </div>
     );
   }
-
-  const currentPlayer = lobbyState.players.find(
-    (p) => p.player_id === playerId
-  );
 
   return (
     <div className="room-lobby">

@@ -29,7 +29,7 @@ export default function PlayerArea({
   onDropToStack,
   onDragStartPayload,
 }: PlayerAreaProps) {
-  const { startDrag, cancelDrag, completeDrag, dragState } = useCardDragContext();
+  const { startDrag, dragState } = useCardDragContext();
   const [isPeekingDeck, setIsPeekingDeck] = useState(false);
   
   // Calculate current page display from deck and deck_page

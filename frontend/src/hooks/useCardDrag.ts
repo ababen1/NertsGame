@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Card } from "../types/game";
 import { DragPayload } from "../components/PlayerArea/types";
-import { cardAssetPath } from "../utils/cardAsset";
 import { CARD_STACK_OFFSET } from "../utils/constants";
 
 interface DragState {
@@ -36,7 +35,7 @@ export function useCardDrag() {
     payload: DragPayload,
     card: Card,
     element: HTMLElement,
-    event: React.MouseEvent | React.TouchEvent
+    event: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent
   ) => {
     const rect = element.getBoundingClientRect();
     const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
@@ -133,7 +132,7 @@ export function useCardDrag() {
       cancelDrag();
     };
 
-    const handleMouseUp = (e: MouseEvent) => {
+    const handleMouseUp = () => {
       // On mobile, use touch events instead
       if (isTouchDevice.current) return;
       

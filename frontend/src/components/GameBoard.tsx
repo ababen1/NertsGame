@@ -10,6 +10,7 @@ import {
 } from "../contexts/CardDragContext";
 import FloatingCard from "./FloatingCard";
 import { Suit } from "../types/game";
+import { has_multiplayer } from "../utils/constants";
 
 interface GameBoardProps {
   gameId: number;
@@ -54,6 +55,7 @@ function GameBoardContent({
   }
 
   const currentPlayer = gameState.players[playerId.toString()];
+  const roundNumber = gameState.current_round;
 
   if (!currentPlayer) {
     return (
@@ -68,47 +70,45 @@ function GameBoardContent({
     <div className="game-board">
       <div className="game-header">
         <h1>
-          {isOffline ? "Practice Mode" : `Game #${gameId}`} - Round{" "}
-          {(() => {
-            console.log("[GameBoard] Displaying round number", {
-              currentRound: gameState.current_round,
-              isOffline,
-              timestamp: Date.now(),
-            });
-            return gameState.current_round;
-          })()}
+          {has_multiplayer
+            ? `${isOffline ? "Practice Mode" : `Game #${gameId}`} - Round ${roundNumber}`
+            : `Round ${roundNumber}`}
         </h1>
         <div className="game-info">
-          <div className="rename-area">
-            <input
-              value={editingName}
-              onChange={(e) => setEditingName(e.target.value)}
-              placeholder="Display name"
-            />
-            <button
-              onClick={async () => {
-                if (!editingName.trim()) return;
-                try {
-                  setRenameSaving(true);
-                  await onRename(editingName.trim());
-                } finally {
-                  setRenameSaving(false);
-                }
-              }}
-              disabled={renameSaving || !editingName.trim()}
-            >
-              {renameSaving ? "Saving..." : "Save name"}
-            </button>
-          </div>
-          <span className={`status ${gameState.status}`}>
-            {gameState.status}
-          </span>
+          {has_multiplayer && (
+            <div className="rename-area">
+              <input
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                placeholder="Display name"
+              />
+              <button
+                onClick={async () => {
+                  if (!editingName.trim()) return;
+                  try {
+                    setRenameSaving(true);
+                    await onRename(editingName.trim());
+                  } finally {
+                    setRenameSaving(false);
+                  }
+                }}
+                disabled={renameSaving || !editingName.trim()}
+              >
+                {renameSaving ? "Saving..." : "Save name"}
+              </button>
+            </div>
+          )}
+          {has_multiplayer && (
+            <span className={`status ${gameState.status}`}>{gameState.status}</span>
+          )}
           {gameState.winner_id && (
             <span className="winner">Winner: Player {gameState.winner_id}</span>
           )}
-          <button onClick={onLeaveGame} className="leave-btn">
-            Leave Game
-          </button>
+          {has_multiplayer && (
+            <button onClick={onLeaveGame} className="leave-btn">
+              Leave Game
+            </button>
+          )}
         </div>
       </div>
 

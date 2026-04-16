@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext } from "react";
 import { useCardDrag } from "../hooks/useCardDrag";
 
 interface CardDragContextType {

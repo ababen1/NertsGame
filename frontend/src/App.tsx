@@ -4,6 +4,7 @@ import GameBoard from "./components/GameBoard";
 import RoomLobby from "./components/RoomLobby";
 import "./App.css";
 import { getDeviceId } from "./utils/deviceId";
+import { has_multiplayer } from "./utils/constants";
 
 type PlayerProfile = { id: number; username: string; device_id?: string };
 
@@ -16,6 +17,16 @@ function App() {
 
   // Load player from device (localStorage) on start
   useEffect(() => {
+    if (!has_multiplayer) {
+      const offlinePlayer = { id: 0, username: "Offline Player" };
+      setPlayer(offlinePlayer);
+      localStorage.setItem("nertsPlayer", JSON.stringify(offlinePlayer));
+      setIsOffline(true);
+      setCurrentGameId(1);
+      setLoadingProfile(false);
+      return;
+    }
+
     const saved = localStorage.getItem("nertsPlayer");
     const load = async () => {
       if (saved) {
