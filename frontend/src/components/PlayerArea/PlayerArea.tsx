@@ -151,7 +151,9 @@ export default function PlayerArea({
                         onTouchStart={(e) => {
                           // On mobile, use touch and drag
                           if (!isPickablePayload) return;
-                          e.preventDefault();
+                          if (e.cancelable) {
+                            e.preventDefault();
+                          }
                           const finalPayload = onDragStartPayload(payload);
                           const element = e.currentTarget;
                           startDrag(finalPayload, playableCard, element, e.nativeEvent);

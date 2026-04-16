@@ -153,6 +153,19 @@ export function useCardDrag() {
         target.closest(".nerts-pile")
       );
       
+      if (isValidDropTarget && target) {
+        // Forward touch-drop to the element under finger.
+        // React handlers on stacks/center already implement drop validation.
+        const mouseUpEvent = new MouseEvent("mouseup", {
+          bubbles: true,
+          cancelable: true,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        });
+        target.dispatchEvent(mouseUpEvent);
+        return;
+      }
+
       if (!isValidDropTarget) {
         cancelDrag();
       }

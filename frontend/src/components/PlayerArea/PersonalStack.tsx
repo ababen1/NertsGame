@@ -28,7 +28,8 @@ export default function PersonalStack({
   onDragStartPayload,
   pickContext,
 }: PersonalStackProps) {
-  const { startDrag, cancelDrag, completeDrag, dragState } = useCardDragContext();
+  const { startDrag, cancelDrag, completeDrag, dragState } =
+    useCardDragContext();
   const isDraggingFromHere = useRef(false);
 
   const parsePayload = (e: React.DragEvent) => {
@@ -69,7 +70,7 @@ export default function PersonalStack({
       onDrop={(e) => {
         e.preventDefault();
         const payload = parsePayload(e);
-        
+
         // Handle custom drag (click-to-drag)
         if (dragState.isDragging && dragState.payload) {
           const customPayload = dragState.payload;
@@ -84,7 +85,8 @@ export default function PersonalStack({
               pickContext.personalStacks
             ) {
               // Get the source stack and find the bottom card of the sequence
-              const sourceStack = pickContext.personalStacks[customPayload.fromStack];
+              const sourceStack =
+                pickContext.personalStacks[customPayload.fromStack];
               if (sourceStack && sourceStack.length >= customPayload.count) {
                 const startIdx = sourceStack.length - customPayload.count;
                 const sequence = sourceStack.slice(startIdx);
@@ -146,53 +148,99 @@ export default function PersonalStack({
       }}
       onTouchEnd={(e) => {
         // Handle drop on touch end for mobile
-        if (dragState.isDragging && dragState.payload && !isDraggingFromHere.current) {
+        if (
+          dragState.isDragging &&
+          dragState.payload &&
+          !isDraggingFromHere.current
+        ) {
           e.stopPropagation();
-          e.preventDefault();
-          const touch = e.changedTouches[0];
-          const target = document.elementFromPoint(touch.clientX, touch.clientY);
-          const isOverThisStack = target && target.closest(`.personal-stack`);
-          
-          if (isOverThisStack) {
-            const customPayload = dragState.payload;
-            if (customPayload) {
-              // For stacks, we need to check the bottom card, not the top card
-              let cardToCheck = customPayload.card;
-              if (
-                customPayload.source === "personal" &&
-                customPayload.fromStack !== undefined &&
-                customPayload.count &&
-                customPayload.count > 1 &&
-                pickContext.personalStacks
-              ) {
-                const sourceStack = pickContext.personalStacks[customPayload.fromStack];
-                if (sourceStack && sourceStack.length >= customPayload.count) {
-                  const startIdx = sourceStack.length - customPayload.count;
-                  const sequence = sourceStack.slice(startIdx);
-                  cardToCheck = sequence[0];
-                }
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+          const customPayload = dragState.payload;
+          if (customPayload) {
+            // For stacks, we need to check the bottom card, not the top card
+            let cardToCheck = customPayload.card;
+            if (
+              customPayload.source === "personal" &&
+              customPayload.fromStack !== undefined &&
+              customPayload.count &&
+              customPayload.count > 1 &&
+              pickContext.personalStacks
+            ) {
+              const sourceStack =
+                pickContext.personalStacks[customPayload.fromStack];
+              if (sourceStack && sourceStack.length >= customPayload.count) {
+                const startIdx = sourceStack.length - customPayload.count;
+                const sequence = sourceStack.slice(startIdx);
+                cardToCheck = sequence[0];
               }
-              const validationPayload: DragPayload = {
-                ...customPayload,
-                card: cardToCheck,
-              };
-              const dropTarget: DropTarget = { type: "personal", stack };
-              if (!isDroppable(validationPayload, dropTarget)) {
-                cancelDrag();
-                isDraggingFromHere.current = false;
-                return;
-              }
-              onDrop(customPayload);
-              completeDrag();
-              isDraggingFromHere.current = false;
             }
+            const validationPayload: DragPayload = {
+              ...customPayload,
+              card: cardToCheck,
+            };
+            const dropTarget: DropTarget = { type: "personal", stack };
+            if (!isDroppable(validationPayload, dropTarget)) {
+              cancelDrag();
+              isDraggingFromHere.current = false;
+              return;
+            }
+            onDrop(customPayload);
+            completeDrag();
+            isDraggingFromHere.current = false;
+          }
+        }
+      }}
+      onMouseUp={() => {
+        // Handle drop on mouse up (also used by synthetic mouseup from touch end)
+        if (
+          dragState.isDragging &&
+          dragState.payload &&
+          !isDraggingFromHere.current
+        ) {
+          const customPayload = dragState.payload;
+          if (customPayload) {
+            let cardToCheck = customPayload.card;
+            if (
+              customPayload.source === "personal" &&
+              customPayload.fromStack !== undefined &&
+              customPayload.count &&
+              customPayload.count > 1 &&
+              pickContext.personalStacks
+            ) {
+              const sourceStack =
+                pickContext.personalStacks[customPayload.fromStack];
+              if (sourceStack && sourceStack.length >= customPayload.count) {
+                const startIdx = sourceStack.length - customPayload.count;
+                const sequence = sourceStack.slice(startIdx);
+                cardToCheck = sequence[0];
+              }
+            }
+            const validationPayload: DragPayload = {
+              ...customPayload,
+              card: cardToCheck,
+            };
+            const dropTarget: DropTarget = { type: "personal", stack };
+            if (!isDroppable(validationPayload, dropTarget)) {
+              cancelDrag();
+              isDraggingFromHere.current = false;
+              return;
+            }
+            onDrop(customPayload);
+            completeDrag();
+            isDraggingFromHere.current = false;
           }
         }
       }}
       onClick={(e) => {
         // Handle drop on click for click-to-drag (desktop only)
         // Only handle if we're already dragging (not starting a new drag from this stack)
-        if (dragState.isDragging && dragState.payload && !isDraggingFromHere.current) {
+        if (
+          dragState.isDragging &&
+          dragState.payload &&
+          !isDraggingFromHere.current
+        ) {
           e.stopPropagation();
           e.preventDefault();
           // We're clicking on this stack (or a card in it) - validate and drop
@@ -208,7 +256,8 @@ export default function PersonalStack({
               pickContext.personalStacks
             ) {
               // Get the source stack and find the bottom card of the sequence
-              const sourceStack = pickContext.personalStacks[customPayload.fromStack];
+              const sourceStack =
+                pickContext.personalStacks[customPayload.fromStack];
               if (sourceStack && sourceStack.length >= customPayload.count) {
                 const startIdx = sourceStack.length - customPayload.count;
                 const sequence = sourceStack.slice(startIdx);
@@ -266,15 +315,15 @@ export default function PersonalStack({
                 }}
                 onMouseDown={(e) => {
                   // On mobile, use touch events instead
-                  if ('ontouchstart' in window) return;
-                  
+                  if ("ontouchstart" in window) return;
+
                   if (!shouldAllowDrag || e.button !== 0) return; // Only left click
-                  
+
                   // If already dragging, don't start a new drag - let the drop handler manage it
                   if (dragState.isDragging) {
                     return;
                   }
-                  
+
                   e.preventDefault();
                   e.stopPropagation();
                   const finalPayload = onDragStartPayload(payload);
@@ -285,13 +334,15 @@ export default function PersonalStack({
                 onTouchStart={(e) => {
                   // On mobile, use touch and drag (not click-to-drag)
                   if (!shouldAllowDrag) return;
-                  
+
                   // If already dragging, don't start a new drag
                   if (dragState.isDragging) {
                     return;
                   }
-                  
-                  e.preventDefault();
+
+                  if (e.cancelable) {
+                    e.preventDefault();
+                  }
                   e.stopPropagation();
                   const finalPayload = onDragStartPayload(payload);
                   const element = e.currentTarget;
@@ -301,10 +352,14 @@ export default function PersonalStack({
                 onClick={(e) => {
                   // If we're already dragging and clicking on a card in a different stack,
                   // handle the drop directly here
-                  if (dragState.isDragging && dragState.payload && !isDraggingFromHere.current) {
+                  if (
+                    dragState.isDragging &&
+                    dragState.payload &&
+                    !isDraggingFromHere.current
+                  ) {
                     e.stopPropagation();
                     e.preventDefault();
-                    
+
                     // Handle drop on this stack
                     const customPayload = dragState.payload;
                     if (customPayload) {
@@ -318,9 +373,14 @@ export default function PersonalStack({
                         pickContext.personalStacks
                       ) {
                         // Get the source stack and find the bottom card of the sequence
-                        const sourceStack = pickContext.personalStacks[customPayload.fromStack];
-                        if (sourceStack && sourceStack.length >= customPayload.count) {
-                          const startIdx = sourceStack.length - customPayload.count;
+                        const sourceStack =
+                          pickContext.personalStacks[customPayload.fromStack];
+                        if (
+                          sourceStack &&
+                          sourceStack.length >= customPayload.count
+                        ) {
+                          const startIdx =
+                            sourceStack.length - customPayload.count;
                           const sequence = sourceStack.slice(startIdx);
                           // Bottom card is the last card in the sequence
                           cardToCheck = sequence[0];
@@ -331,7 +391,10 @@ export default function PersonalStack({
                         ...customPayload,
                         card: cardToCheck,
                       };
-                      const dropTarget: DropTarget = { type: "personal", stack };
+                      const dropTarget: DropTarget = {
+                        type: "personal",
+                        stack,
+                      };
                       if (!isDroppable(validationPayload, dropTarget)) {
                         // Invalid drop - return card to original position
                         cancelDrag();
@@ -343,7 +406,7 @@ export default function PersonalStack({
                     }
                     return;
                   }
-                  
+
                   // If we just started dragging from this card, prevent the click
                   // from starting a new drag or interfering
                   if (isDraggingFromHere.current) {
@@ -368,7 +431,7 @@ export default function PersonalStack({
                   const finalPayload = onDragStartPayload(payload);
                   e.dataTransfer.setData(
                     "application/json",
-                    JSON.stringify(finalPayload)
+                    JSON.stringify(finalPayload),
                   );
                   // Set custom drag image to only show the picked card, not the entire stack
                   const dragImg = document.createElement("img");
