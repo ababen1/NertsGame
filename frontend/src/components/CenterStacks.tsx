@@ -140,54 +140,6 @@ export default function CenterStacks({
                 };
                 onCardDrop(payloadWithTarget);
               }}
-              onTouchEnd={(e) => {
-                // Handle drop on touch end for mobile
-                if (dragState.isDragging && dragState.payload) {
-                  if (e.cancelable) {
-                    e.preventDefault();
-                  }
-
-                  const customPayload = dragState.payload;
-                  const card = customPayload.card;
-
-                  let targetSuit: Suit;
-                  if (cards.length === 0) {
-                    // Empty stack - only accept ace
-                    if (card.rank !== 1) {
-                      cancelDrag();
-                      return;
-                    }
-                    // Use the slot's suit key (where it was dropped)
-                    targetSuit = suit;
-                  } else {
-                    // Stack has cards, use its suit
-                    targetSuit = stackSuit!;
-                  }
-
-                  // For validation, use card's suit if empty or stack's suit if has cards
-                  const validationSuit = cards.length === 0 ? card.suit : stackSuit!;
-                  const centerStack: CenterStack = {
-                    suit: validationSuit,
-                    cards: cards,
-                  };
-                  const dropTarget: DropTarget = {
-                    type: "center",
-                    stack: centerStack,
-                  };
-                  if (!isDroppable(customPayload, dropTarget)) {
-                    cancelDrag();
-                    return;
-                  }
-                  const payloadWithTarget: DragPayload & {
-                    targetSuit?: Suit;
-                  } = {
-                    ...customPayload,
-                    targetSuit: targetSuit, // Slot's suit key
-                  };
-                  onCardDrop(payloadWithTarget);
-                  completeDrag();
-                }
-              }}
               onMouseUp={() => {
                 // Handle drop on mouse up for click-to-drag (desktop only)
                 if (dragState.isDragging && dragState.payload) {

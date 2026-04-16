@@ -11,7 +11,7 @@ import {
 } from "../../utils/solitiareFuncs";
 import { useCardDragContext } from "../../contexts/CardDragContext";
 import { CARD_STACK_OFFSET } from "../../utils/constants";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface PersonalStackProps {
   stack: Card[];
@@ -31,6 +31,12 @@ export default function PersonalStack({
   const { startDrag, cancelDrag, completeDrag, dragState } =
     useCardDragContext();
   const isDraggingFromHere = useRef(false);
+
+  useEffect(() => {
+    if (!dragState.isDragging) {
+      isDraggingFromHere.current = false;
+    }
+  }, [dragState.isDragging]);
 
   const parsePayload = (e: React.DragEvent) => {
     try {
@@ -145,52 +151,6 @@ export default function PersonalStack({
           }
         }
         onDrop(payload);
-      }}
-      onTouchEnd={(e) => {
-        // Handle drop on touch end for mobile
-        if (
-          dragState.isDragging &&
-          dragState.payload &&
-          !isDraggingFromHere.current
-        ) {
-          e.stopPropagation();
-          if (e.cancelable) {
-            e.preventDefault();
-          }
-          const customPayload = dragState.payload;
-          if (customPayload) {
-            // For stacks, we need to check the bottom card, not the top card
-            let cardToCheck = customPayload.card;
-            if (
-              customPayload.source === "personal" &&
-              customPayload.fromStack !== undefined &&
-              customPayload.count &&
-              customPayload.count > 1 &&
-              pickContext.personalStacks
-            ) {
-              const sourceStack =
-                pickContext.personalStacks[customPayload.fromStack];
-              if (sourceStack && sourceStack.length >= customPayload.count) {
-                const startIdx = sourceStack.length - customPayload.count;
-                const sequence = sourceStack.slice(startIdx);
-                cardToCheck = sequence[0];
-              }
-            }
-            const validationPayload: DragPayload = {
-              ...customPayload,
-              card: cardToCheck,
-            };
-            const dropTarget: DropTarget = { type: "personal", stack };
-            if (!isDroppable(validationPayload, dropTarget)) {
-              cancelDrag();
-              isDraggingFromHere.current = false;
-              return;
-            }
-            onDrop(customPayload);
-            completeDrag();
-            isDraggingFromHere.current = false;
-          }
-        }
       }}
       onMouseUp={() => {
         // Handle drop on mouse up (also used by synthetic mouseup from touch end)
