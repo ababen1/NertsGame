@@ -11,6 +11,7 @@ import {
 } from "../../utils/solitiareFuncs";
 import { useCardDragContext } from "../../contexts/CardDragContext";
 import { useState, useEffect } from "react";
+import { has_multiplayer } from "../../utils/constants";
 
 interface PlayerAreaProps {
   player: PlayerState;
@@ -71,7 +72,7 @@ export default function PlayerArea({
   return (
     <div className={`player-area ${isCurrentPlayer ? "current-player" : ""}`}>
       <div className="player-header">
-        <h3>Player {player.position + 1}</h3>
+        {has_multiplayer && <h3>Player {player.position + 1}</h3>}
         <div className="player-score">
           Score: {getCurrentTotalScore(player)}
         </div>

@@ -37,6 +37,7 @@ function GameBoardContent({
   const playCard = isOffline ? practice.playCard : online.playCard;
   const callNerts = isOffline ? practice.callNerts : online.callNerts;
   const moveStack = isOffline ? practice.moveStack : online.moveStack;
+  const restartGame = isOffline ? practice.restartGame : undefined;
   const [editingName, setEditingName] = useState(playerName);
   const [renameSaving, setRenameSaving] = useState(false);
   const { dragState, floatingCardRef, cancelDrag, completeDrag } =
@@ -107,6 +108,15 @@ function GameBoardContent({
           {has_multiplayer && (
             <button onClick={onLeaveGame} className="leave-btn">
               Leave Game
+            </button>
+          )}
+          {!has_multiplayer && isOffline && (
+            <button
+              onClick={() => restartGame?.()}
+              className="leave-btn"
+              type="button"
+            >
+              Restart
             </button>
           )}
         </div>

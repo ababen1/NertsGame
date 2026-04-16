@@ -9,6 +9,7 @@ import {
 
 const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
 const RANKS: Rank[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+const OFFLINE_GAME_STORAGE_KEY = "nertsOfflineGameState";
 
 function buildDeck(): Card[] {
   const cards: Card[] = [];
@@ -61,6 +62,7 @@ function canPlayOnCenter(
 export function useOfflinePractice(playerId: number, _playerName: string) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const isInitializingRef = useRef(false);
+  const hasLoadedFromStorageRef = useRef(false);
 
   const initGame = useCallback(() => {
     setGameState((prev) => {
@@ -145,6 +147,21 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
   }, [playerId]);
 
   useEffect(() => {
+    if (hasLoadedFromStorageRef.current) return;
+    hasLoadedFromStorageRef.current = true;
+    try {
+      const saved = localStorage.getItem(OFFLINE_GAME_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as GameState;
+        if (parsed && parsed.players && parsed.players[playerId]) {
+          setGameState(parsed);
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn("[OfflinePractice] Failed to load saved game state", error);
+    }
+
     console.log("[OfflinePractice] useEffect calling initGame", {
       timestamp: Date.now(),
     });
@@ -158,6 +175,15 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       isInitializingRef.current = false;
     };
   }, [initGame]);
+
+  useEffect(() => {
+    if (!gameState) return;
+    try {
+      localStorage.setItem(OFFLINE_GAME_STORAGE_KEY, JSON.stringify(gameState));
+    } catch (error) {
+      console.warn("[OfflinePractice] Failed to save game state", error);
+    }
+  }, [gameState]);
 
   const drawDeck = useCallback(() => {
     setGameState((prev) => {
@@ -451,6 +477,50 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     initGame();
   }, [initGame, playerId]);
 
+  const restartGame = useCallback(() => {
+    try {
+      localStorage.removeItem(OFFLINE_GAME_STORAGE_KEY);
+    } catch (error) {
+      console.warn("[OfflinePractice] Failed to clear saved game state", error);
+    }
+
+    // Build a brand-new game directly to avoid transient null/loading states.
+    const deck = shuffle(buildDeck());
+    const personalStacks: Card[][] = [];
+    for (let i = 0; i < 6; i += 1) {
+      personalStacks.push([deck.pop() as Card]);
+    }
+    const nerts = deck.splice(0, 13);
+    const remainingDeck = deck;
+
+    isInitializingRef.current = false;
+    setGameState({
+      game_id: 0,
+      current_round: 1,
+      status: "active",
+      winner_id: null,
+      center_stacks: {
+        hearts: [],
+        diamonds: [],
+        clubs: [],
+        spades: [],
+      },
+      players: {
+        [playerId]: {
+          player_id: playerId,
+          position: 0,
+          score: [],
+          nerts_pile_count: nerts.length,
+          personal_stacks: personalStacks,
+          deck: remainingDeck.slice(0),
+          deck_page: 0,
+          nerts_pile: nerts,
+          scoredCards: [],
+        },
+      },
+    });
+  }, [playerId]);
+
   return {
     gameState,
     connected: true,
@@ -458,5 +528,6 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     playCard,
     callNerts,
     moveStack,
+    restartGame,
   };
 }
