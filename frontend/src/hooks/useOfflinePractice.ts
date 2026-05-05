@@ -41,6 +41,7 @@ function cardKey(suit: Suit, rank: Rank) {
 
 function createInitialDeal(debugSpread: boolean) {
   if (!debugSpread) {
+    // Normal mode: random deal that mirrors server-style setup.
     const deck = shuffle(buildDeck());
     const personalStacks: Card[][] = [];
     for (let i = 0; i < 6; i += 1) {
@@ -49,61 +50,67 @@ function createInitialDeal(debugSpread: boolean) {
     const nerts = deck.splice(0, 13);
     const remainingDeck = deck; // 33 cards
     return { personalStacks, nerts, remainingDeck };
-  }
+  } else {
+    // Debug mode: deterministic low-card spread + shuffled remainder for easier manual testing.
+    const pool = new Map<string, Card>(
+      buildDeck().map((card) => [cardKey(card.suit, card.rank), card])
+    );
 
-  const pool = new Map<string, Card>(
-    buildDeck().map((card) => [cardKey(card.suit, card.rank), card])
-  );
+    const take = (suit: Suit, rank: Rank) => {
+      const key = cardKey(suit, rank);
+      const card = pool.get(key);
+      if (!card) {
+        throw new Error(`Missing card while building debug spread: ${key}`);
+      }
+      pool.delete(key);
+      return card;
+    };
 
-  const take = (suit: Suit, rank: Rank) => {
-    const key = cardKey(suit, rank);
-    const card = pool.get(key);
-    if (!card) {
-      throw new Error(`Missing card while building debug spread: ${key}`);
+    // Keep low cards immediately accessible so center stacks grow quickly.
+    const personalOrder: Card[] = [
+      take("clubs", 1),
+      take("diamonds", 1),
+      take("hearts", 1),
+      take("spades", 1),
+      take("clubs", 2),
+      take("diamonds", 2),
+    ];
+
+    const nerts: Card[] = [
+      take("hearts", 2),
+      take("spades", 2),
+      take("clubs", 3),
+      take("diamonds", 3),
+      take("hearts", 3),
+      take("spades", 3),
+      take("clubs", 4),
+      take("diamonds", 4),
+      take("hearts", 4),
+      take("spades", 4),
+      take("clubs", 5),
+      take("diamonds", 5),
+      take("hearts", 5),
+    ];
+
+    // Whatever cards were not explicitly placed become the draw deck.
+    const remainingPool = Array.from(pool.values());
+    const remainingDeck = shuffle(remainingPool);
+    const arrangedDeck = [
+      ...nerts,
+      ...remainingDeck,
+      ...personalOrder.slice().reverse(),
+    ];
+    const personalStacks: Card[][] = [];
+    for (let i = 0; i < 6; i += 1) {
+      personalStacks.push([arrangedDeck.pop() as Card]);
     }
-    pool.delete(key);
-    return card;
-  };
 
-  // Keep low cards immediately accessible so center stacks grow quickly.
-  const personalOrder: Card[] = [
-    take("clubs", 1),
-    take("diamonds", 1),
-    take("hearts", 1),
-    take("spades", 1),
-    take("clubs", 2),
-    take("diamonds", 2),
-  ];
-
-  const nerts: Card[] = [
-    take("hearts", 2),
-    take("spades", 2),
-    take("clubs", 3),
-    take("diamonds", 3),
-    take("hearts", 3),
-    take("spades", 3),
-    take("clubs", 4),
-    take("diamonds", 4),
-    take("hearts", 4),
-    take("spades", 4),
-    take("clubs", 5),
-    take("diamonds", 5),
-    take("hearts", 5),
-  ];
-
-  const remainingPool = Array.from(pool.values());
-  const remainingDeck = shuffle(remainingPool);
-  const arrangedDeck = [...nerts, ...remainingDeck, ...personalOrder.slice().reverse()];
-  const personalStacks: Card[][] = [];
-  for (let i = 0; i < 6; i += 1) {
-    personalStacks.push([arrangedDeck.pop() as Card]);
+    return {
+      personalStacks,
+      nerts: arrangedDeck.splice(0, 13),
+      remainingDeck: arrangedDeck,
+    };
   }
-
-  return {
-    personalStacks,
-    nerts: arrangedDeck.splice(0, 13),
-    remainingDeck: arrangedDeck,
-  };
 }
 
 function rankDisplay(rank: Rank, suit: Suit) {
@@ -133,6 +140,7 @@ function canPlayOnCenter(
 
 export function useOfflinePractice(playerId: number, _playerName: string) {
   const [gameState, setGameState] = useState<GameState | null>(null);
+  // StrictMode can run effects twice in development; these refs prevent duplicate init/load work.
   const isInitializingRef = useRef(false);
   const hasLoadedFromStorageRef = useRef(false);
 
@@ -161,7 +169,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       const { personalStacks, nerts, remainingDeck } =
         createInitialDeal(use_debug_spread);
 
-      // Get previous score array (persists across rounds)
+      // Scores persist across rounds; each entry is one round score.
       const previousScoreArray = prev?.players[playerId]?.score || [];
 
       // For brand new game (prev === null), start at round 1
@@ -179,6 +187,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         timestamp: Date.now(),
       });
 
+      // Build a full new round state (fresh piles/stacks) while preserving match-level metadata.
       const state: GameState = {
         game_id: 0,
         current_round: calculatedRound,
@@ -214,6 +223,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
   }, [playerId]);
 
   useEffect(() => {
+    // First mount: restore persisted offline game if available, otherwise create a new one.
     if (hasLoadedFromStorageRef.current) return;
     hasLoadedFromStorageRef.current = true;
     try {
@@ -245,6 +255,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
 
   useEffect(() => {
     if (!gameState) return;
+    // Persist after every local state transition so refreshes can resume immediately.
     try {
       localStorage.setItem(OFFLINE_GAME_STORAGE_KEY, JSON.stringify(gameState));
     } catch (error) {
@@ -261,7 +272,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       // If deck is empty, nothing to do
       if (deck.length === 0) return prev;
 
-      // Calculate number of pages (each page is 3 cards)
+      // Deck UI is paged in chunks of 3 to match physical Nerts draw behavior.
       // Page 0 = no cards displayed, Page 1 = first 3 cards, Page 2 = next 3 cards, etc.
       const cardsPerPage = 3;
       const totalPages = Math.ceil(deck.length / cardsPerPage);
@@ -312,7 +323,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     // Remove the card
     deck.splice(cardIndex, 1);
 
-    // Recalculate page if needed (if we removed a card from current page)
+    // Keep deck_page in range after removal so UI never points to a non-existent page.
     // Page 0 = no cards, Page 1+ = actual card pages
     const cardsPerPage = 3;
     const totalPages = Math.ceil(deck.length / cardsPerPage);
@@ -345,6 +356,9 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     let s = state;
     const player = s.players[pid];
 
+    // Source precedence matters for matching gameplay:
+    // 1) current visible deck top, 2) nerts pile, 3) top cards of personal stacks.
+    // This ensures we only remove legal, currently playable cards from each source.
     // Check if card is in deck (check current page's top card)
     // Page 0 = no cards displayed, Page 1+ = actual card pages
     const deck = player.deck || [];
@@ -428,6 +442,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
           // Validation: canPlayOnCenter checks suit against top card's suit (if exists) or allows any ace if empty
           // The suit parameter is just for placement location, not validation
           if (!canPlayOnCenter(card, top, suit)) return prev;
+          // Remove from whichever source currently owns this card, then append to center.
           next = removeFromPlayer(next, playerId, card);
           const newStack = [...stack, card];
           const currentPlayer = next.players[playerId];
@@ -448,6 +463,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
           const stack = player.personal_stacks[idx] || [];
           const top = stack[stack.length - 1];
           if (!canPlayOnPersonal(card, top)) return prev;
+          // Same ownership removal logic as center plays; destination differs.
           next = removeFromPlayer(next, playerId, card);
           const newStacks = next.players[playerId].personal_stacks.map((s, i) =>
             i === idx ? [...s, card] : s
@@ -478,7 +494,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         const target = [...player.personal_stacks[to]];
         if (source.length < count) return prev;
         const seq = source.slice(source.length - count);
-        // Validate sequence is descending alternating
+        // Internal stack moves must move a valid descending/alternating run.
         if (!isDescendingAlternating(seq)) return prev;
         // Check if bottom card of sequence can be placed on target
         const targetTop =
@@ -519,7 +535,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       // In offline practice, the player always calls nerts first
       roundScore += 40;
 
-      // Add round score to the score array
+      // Round scores are append-only history used to compute total and winner.
       const newScoreArray = [...player.score, roundScore];
       const totalScore = getTotalScore({ ...player, score: newScoreArray });
 
@@ -540,7 +556,7 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         },
       };
     });
-    // new round
+    // Start next round immediately (or reset board after finish) using preserved score history.
     initGame();
   }, [initGame, playerId]);
 
@@ -551,7 +567,8 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
       console.warn("[OfflinePractice] Failed to clear saved game state", error);
     }
 
-    // Build a brand-new game directly to avoid transient null/loading states.
+    // Hard reset: clear persisted session and replace state in one pass
+    // to avoid brief null/loading flicker in the UI.
     const { personalStacks, nerts, remainingDeck } =
       createInitialDeal(use_debug_spread);
 
