@@ -22,7 +22,7 @@ export default function NertsPile({
   onDragStartPayload,
   pickContext,
 }: NertsPileProps) {
-  const { startDrag, dragState } = useCardDragContext();
+  const { startDrag } = useCardDragContext();
   
   return (
     <div className="nerts-section">
@@ -45,7 +45,7 @@ export default function NertsPile({
                 <img
                   key="nerts-top"
                   className="card-img nerts-card small"
-                  draggable={isPickablePayload}
+                  draggable={false}
                   style={{
                     cursor: isPickablePayload ? "grab" : "default",
                   }}
@@ -70,20 +70,8 @@ export default function NertsPile({
                     startDrag(finalPayload, top, element, e.nativeEvent);
                   }}
                   onDragStart={(e) => {
-                    // Keep HTML5 drag as fallback
-                    if (dragState.isDragging) {
-                      e.preventDefault();
-                      return;
-                    }
-                    if (!isPickablePayload) {
-                      e.preventDefault();
-                      return;
-                    }
-                    const finalPayload = onDragStartPayload(payload);
-                    e.dataTransfer.setData(
-                      "application/json",
-                      JSON.stringify(finalPayload)
-                    );
+                    // Block browser-native image drag gestures (e.g. Chrome split view)
+                    e.preventDefault();
                   }}
                   src={cardAssetPath(top)}
                   alt={top.display}

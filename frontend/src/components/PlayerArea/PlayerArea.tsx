@@ -131,7 +131,7 @@ export default function PlayerArea({
                       {/* Playable card */}
                       <img
                         className="card-img playable-card small"
-                        draggable={isPickablePayload}
+                        draggable={false}
                         style={{
                           position: "relative",
                           zIndex: 2,
@@ -160,21 +160,8 @@ export default function PlayerArea({
                           setIsPeekingDeck(true);
                         }}
                         onDragStart={(e) => {
-                          // Keep HTML5 drag as fallback
-                          if (dragState.isDragging) {
-                            e.preventDefault();
-                            return;
-                          }
-                          if (!isPickablePayload) {
-                            e.preventDefault();
-                            return;
-                          }
-                          const finalPayload = onDragStartPayload(payload);
-                          e.dataTransfer.setData(
-                            "application/json",
-                            JSON.stringify(finalPayload)
-                          );
-                          setIsPeekingDeck(true);
+                          // Block browser-native image drag gestures (e.g. Chrome split view)
+                          e.preventDefault();
                         }}
                         onDragEnd={() => {
                           setIsPeekingDeck(false);

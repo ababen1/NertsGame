@@ -8,16 +8,20 @@ interface FloatingCardProps {
   floatingCardRef: React.RefObject<HTMLDivElement>;
 }
 
-export default function FloatingCard({ dragState, floatingCardRef }: FloatingCardProps) {
+export default function FloatingCard({
+  dragState,
+  floatingCardRef,
+}: FloatingCardProps) {
   if (!dragState.isDragging || !dragState.card || !dragState.payload) {
     return null;
   }
 
   // Get all cards in the stack being dragged
   // subCards should always be set, but fallback to single card if not
-  const cardsToShow = dragState.payload.subCards?.length > 0 
-    ? dragState.payload.subCards 
-    : [dragState.card];
+  const cardsToShow =
+    dragState.payload.subCards?.length > 0
+      ? dragState.payload.subCards
+      : [dragState.card];
   const cardWidth = 88;
   const cardHeight = 123;
   const stackOffset = CARD_STACK_OFFSET;
@@ -52,4 +56,3 @@ export default function FloatingCard({ dragState, floatingCardRef }: FloatingCar
     </div>
   );
 }
-

@@ -265,7 +265,7 @@ export default function PersonalStack({
               <img
                 key={cardIdx}
                 className="card-img stack-card"
-                draggable={shouldAllowDrag}
+                draggable={false}
                 src={cardAssetPath(card)}
                 alt={card.display}
                 style={{
@@ -379,49 +379,8 @@ export default function PersonalStack({
                   }
                 }}
                 onDragStart={(e) => {
-                  // Keep HTML5 drag as fallback, but prefer click-to-drag
-                  if (dragState.isDragging) {
-                    e.preventDefault();
-                    return;
-                  }
-                  if (!shouldAllowDrag) {
-                    e.preventDefault();
-                    return;
-                  }
-                  const finalPayload = onDragStartPayload(payload);
-                  e.dataTransfer.setData(
-                    "application/json",
-                    JSON.stringify(finalPayload),
-                  );
-                  // Set custom drag image to only show the picked card, not the entire stack
-                  const dragImg = document.createElement("img");
-                  dragImg.src = cardAssetPath(card);
-                  dragImg.style.position = "absolute";
-                  dragImg.style.top = "-1000px";
-                  dragImg.style.width = "70px"; // Make it smaller
-                  dragImg.style.height = "auto";
-                  document.body.appendChild(dragImg);
-
-                  // Wait for image to load, then center it at cursor
-                  dragImg.onload = () => {
-                    const offsetX = dragImg.offsetWidth / 2;
-                    const offsetY = dragImg.offsetHeight / 2;
-                    e.dataTransfer.setDragImage(dragImg, offsetX, offsetY);
-                  };
-
-                  // If image is already loaded, set it immediately
-                  if (dragImg.complete) {
-                    const offsetX = dragImg.offsetWidth / 2;
-                    const offsetY = dragImg.offsetHeight / 2;
-                    e.dataTransfer.setDragImage(dragImg, offsetX, offsetY);
-                  }
-
-                  // Clean up after a short delay
-                  setTimeout(() => {
-                    if (document.body.contains(dragImg)) {
-                      document.body.removeChild(dragImg);
-                    }
-                  }, 0);
+                  // Block browser-native image drag gestures (e.g. Chrome split view)
+                  e.preventDefault();
                 }}
               />
             );
