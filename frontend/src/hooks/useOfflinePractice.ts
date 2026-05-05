@@ -6,6 +6,7 @@ import {
   calculateRoundScore,
   getTotalScore,
 } from "../utils/solitiareFuncs";
+import { use_debug_spread } from "../utils/constants";
 
 const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
 const RANKS: Rank[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
@@ -32,6 +33,77 @@ function shuffle<T>(arr: T[]): T[] {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+function cardKey(suit: Suit, rank: Rank) {
+  return `${suit}:${rank}`;
+}
+
+function createInitialDeal(debugSpread: boolean) {
+  if (!debugSpread) {
+    const deck = shuffle(buildDeck());
+    const personalStacks: Card[][] = [];
+    for (let i = 0; i < 6; i += 1) {
+      personalStacks.push([deck.pop() as Card]);
+    }
+    const nerts = deck.splice(0, 13);
+    const remainingDeck = deck; // 33 cards
+    return { personalStacks, nerts, remainingDeck };
+  }
+
+  const pool = new Map<string, Card>(
+    buildDeck().map((card) => [cardKey(card.suit, card.rank), card])
+  );
+
+  const take = (suit: Suit, rank: Rank) => {
+    const key = cardKey(suit, rank);
+    const card = pool.get(key);
+    if (!card) {
+      throw new Error(`Missing card while building debug spread: ${key}`);
+    }
+    pool.delete(key);
+    return card;
+  };
+
+  // Keep low cards immediately accessible so center stacks grow quickly.
+  const personalOrder: Card[] = [
+    take("clubs", 1),
+    take("diamonds", 1),
+    take("hearts", 1),
+    take("spades", 1),
+    take("clubs", 2),
+    take("diamonds", 2),
+  ];
+
+  const nerts: Card[] = [
+    take("hearts", 2),
+    take("spades", 2),
+    take("clubs", 3),
+    take("diamonds", 3),
+    take("hearts", 3),
+    take("spades", 3),
+    take("clubs", 4),
+    take("diamonds", 4),
+    take("hearts", 4),
+    take("spades", 4),
+    take("clubs", 5),
+    take("diamonds", 5),
+    take("hearts", 5),
+  ];
+
+  const remainingPool = Array.from(pool.values());
+  const remainingDeck = shuffle(remainingPool);
+  const arrangedDeck = [...nerts, ...remainingDeck, ...personalOrder.slice().reverse()];
+  const personalStacks: Card[][] = [];
+  for (let i = 0; i < 6; i += 1) {
+    personalStacks.push([arrangedDeck.pop() as Card]);
+  }
+
+  return {
+    personalStacks,
+    nerts: arrangedDeck.splice(0, 13),
+    remainingDeck: arrangedDeck,
+  };
 }
 
 function rankDisplay(rank: Rank, suit: Suit) {
@@ -86,13 +158,8 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
         timestamp: Date.now(),
       });
 
-      const deck = shuffle(buildDeck());
-      const personalStacks: Card[][] = [];
-      for (let i = 0; i < 6; i += 1) {
-        personalStacks.push([deck.pop() as Card]);
-      }
-      const nerts = deck.splice(0, 13);
-      const remainingDeck = deck; // 33 cards
+      const { personalStacks, nerts, remainingDeck } =
+        createInitialDeal(use_debug_spread);
 
       // Get previous score array (persists across rounds)
       const previousScoreArray = prev?.players[playerId]?.score || [];
@@ -485,13 +552,8 @@ export function useOfflinePractice(playerId: number, _playerName: string) {
     }
 
     // Build a brand-new game directly to avoid transient null/loading states.
-    const deck = shuffle(buildDeck());
-    const personalStacks: Card[][] = [];
-    for (let i = 0; i < 6; i += 1) {
-      personalStacks.push([deck.pop() as Card]);
-    }
-    const nerts = deck.splice(0, 13);
-    const remainingDeck = deck;
+    const { personalStacks, nerts, remainingDeck } =
+      createInitialDeal(use_debug_spread);
 
     isInitializingRef.current = false;
     setGameState({

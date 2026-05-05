@@ -16,6 +16,7 @@ export default function CenterStacks({
   onCardDrop,
 }: CenterStacksProps) {
   const { dragState, cancelDrag, completeDrag } = useCardDragContext();
+  type DragPayloadWithTarget = DragPayload & { targetSuit?: Suit };
 
   const parsePayload = (e: React.DragEvent) => {
     try {
@@ -26,6 +27,40 @@ export default function CenterStacks({
       return null;
     }
   };
+
+  const getTargetSuit = (
+    card: Card,
+    cards: Card[],
+    slotSuit: Suit
+  ): Suit | null => {
+    if (cards.length === 0) {
+      // Empty center slots only accept an ace.
+      return card.rank === 1 ? slotSuit : null;
+    }
+    // Non-empty slot: route to this physical slot key.
+    return slotSuit;
+  };
+
+  const buildCenterDropTarget = (
+    card: Card,
+    cards: Card[],
+    stackSuit?: Suit
+  ): DropTarget => {
+    const validationSuit = cards.length === 0 ? card.suit : (stackSuit as Suit);
+    const centerStack: CenterStack = {
+      suit: validationSuit,
+      cards,
+    };
+    return { type: "center", stack: centerStack };
+  };
+
+  const addTargetSuit = (
+    payload: DragPayload,
+    targetSuit: Suit
+  ): DragPayloadWithTarget => ({
+    ...payload,
+    targetSuit,
+  });
 
   // Get all stacks (including empty ones) - show 4 slots
   const allStacks = (Object.keys(centerStacks) as Suit[]).map((suit) => ({
@@ -53,46 +88,22 @@ export default function CenterStacks({
                 if (dragState.isDragging && dragState.payload) {
                   const customPayload = dragState.payload;
                   const card = customPayload.card;
-                  
-                  // Determine target suit:
-                  // - If stack is empty and card is ace, use the slot's suit key (place in this specific slot)
-                  // - If stack has cards, use the stack's suit (from first card) for validation
-                  let targetSuit: Suit;
-                  if (cards.length === 0) {
-                    // Empty stack - only accept ace
-                    if (card.rank !== 1) {
-                      cancelDrag();
-                      return;
-                    }
-                    // Use the slot's suit key (the suit variable from the map) - this is the physical slot
-                    targetSuit = suit;
-                  } else {
-                    // Stack has cards, use its suit (determined by first card) for validation
-                    targetSuit = stackSuit!;
+
+                  const targetSuit = getTargetSuit(card, cards, suit);
+                  if (!targetSuit) {
+                    cancelDrag();
+                    return;
                   }
-                  
-                  // For validation, create a CenterStack with the card's suit if empty (for ace validation)
-                  // or the stack's suit if it has cards
-                  const validationSuit = cards.length === 0 ? card.suit : stackSuit!;
-                  const centerStack: CenterStack = {
-                    suit: validationSuit,
-                    cards: cards,
-                  };
-                  const target: DropTarget = {
-                    type: "center",
-                    stack: centerStack,
-                  };
+
+                  const target = buildCenterDropTarget(card, cards, stackSuit);
                   if (!isDroppable(customPayload, target)) {
                     // Invalid drop - return card to original position
                     cancelDrag();
                     return;
                   }
-                  // Valid drop - use the slot's suit key (where it was dropped) to update the correct stack
-                  const payloadWithTarget: DragPayload & { targetSuit?: Suit } =
-                    {
-                      ...customPayload,
-                      targetSuit: targetSuit, // This is the slot's suit key, not the card's suit
-                    };
+
+                  // Valid drop - use the slot's suit key (where it was dropped) to update the correct stack.
+                  const payloadWithTarget = addTargetSuit(customPayload, targetSuit);
                   onCardDrop(payloadWithTarget);
                   completeDrag();
                   return;
@@ -104,40 +115,20 @@ export default function CenterStacks({
                   return;
                 }
                 const card = payload.card;
-                
-                // Determine target suit - use slot's suit key for placement
-                let targetSuit: Suit;
-                if (cards.length === 0) {
-                  // Empty stack - only accept ace
-                  if (card.rank !== 1) {
-                    return;
-                  }
-                  // Use the slot's suit key (where it was dropped)
-                  targetSuit = suit;
-                } else {
-                  // Stack has cards, use its suit
-                  targetSuit = stackSuit!;
+
+                const targetSuit = getTargetSuit(card, cards, suit);
+                if (!targetSuit) {
+                  return;
                 }
-                
-                // For validation, use card's suit if empty (for ace) or stack's suit if has cards
-                const validationSuit = cards.length === 0 ? card.suit : stackSuit!;
-                const centerStack: CenterStack = {
-                  suit: validationSuit,
-                  cards: cards,
-                };
-                const target: DropTarget = {
-                  type: "center",
-                  stack: centerStack,
-                };
+
+                const target = buildCenterDropTarget(card, cards, stackSuit);
                 if (!isDroppable(payload, target)) {
                   // Invalid drop - ignore it (card stays in place)
                   return;
                 }
-                // Add targetSuit for the handler - use slot's suit key
-                const payloadWithTarget: DragPayload & { targetSuit?: Suit } = {
-                  ...payload,
-                  targetSuit: targetSuit, // Slot's suit key
-                };
+
+                // Add targetSuit for the handler - use slot's suit key.
+                const payloadWithTarget = addTargetSuit(payload, targetSuit);
                 onCardDrop(payloadWithTarget);
               }}
               onMouseUp={() => {
@@ -147,42 +138,21 @@ export default function CenterStacks({
                   const customPayload = dragState.payload;
                   const card = customPayload.card;
 
-                  let targetSuit: Suit;
-                  if (cards.length === 0) {
-                    // Empty stack - only accept ace
-                    if (card.rank !== 1) {
-                      cancelDrag();
-                      return;
-                    }
-                    // Use the slot's suit key (where it was dropped)
-                    targetSuit = suit;
-                  } else {
-                    // Stack has cards, use its suit
-                    targetSuit = stackSuit!;
+                  const targetSuit = getTargetSuit(card, cards, suit);
+                  if (!targetSuit) {
+                    cancelDrag();
+                    return;
                   }
 
-                  // For validation, use card's suit if empty or stack's suit if has cards
-                  const validationSuit = cards.length === 0 ? card.suit : stackSuit!;
-                  const centerStack: CenterStack = {
-                    suit: validationSuit,
-                    cards: cards,
-                  };
-                  const dropTarget: DropTarget = {
-                    type: "center",
-                    stack: centerStack,
-                  };
+                  const dropTarget = buildCenterDropTarget(card, cards, stackSuit);
                   if (!isDroppable(customPayload, dropTarget)) {
                     // Invalid drop - return card to original position
                     cancelDrag();
                     return;
                   }
-                  // Valid drop - use slot's suit key
-                  const payloadWithTarget: DragPayload & {
-                    targetSuit?: Suit;
-                  } = {
-                    ...customPayload,
-                    targetSuit: targetSuit, // Slot's suit key
-                  };
+
+                  // Valid drop - use slot's suit key.
+                  const payloadWithTarget = addTargetSuit(customPayload, targetSuit);
                   onCardDrop(payloadWithTarget);
                   completeDrag();
                 }

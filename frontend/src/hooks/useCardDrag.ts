@@ -25,7 +25,11 @@ export function useCardDrag() {
   });
 
   const floatingCardRef = useRef<HTMLDivElement | null>(null);
-  
+
+  useEffect(() => {
+    console.log(dragState.card);
+  }, [dragState]);
+
   // Detect if device is mobile/touch
   const isTouchDevice = useRef(
     typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -40,7 +44,7 @@ export function useCardDrag() {
     const rect = element.getBoundingClientRect();
     const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
     const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-    
+
     setDragState({
       isDragging: true,
       payload,
@@ -67,7 +71,7 @@ export function useCardDrag() {
         element.style.transform = "";
         element.style.opacity = "1";
         element.style.zIndex = "";
-        
+
         // Reset after animation
         setTimeout(() => {
           element.style.transition = "";
@@ -135,16 +139,16 @@ export function useCardDrag() {
     const handleMouseUp = () => {
       // On mobile, use touch events instead
       if (isTouchDevice.current) return;
-      
+
       // Don't auto-cancel on mouseup - let the card continue following the cursor
       // Component-level handlers (onMouseUp in PersonalStack, CenterStacks) will handle drops
       // Right-click is handled separately in handleContextMenu
     };
-    
+
     const handleTouchEnd = (e: TouchEvent) => {
       // On mobile, touch end should cancel drag if not over valid drop target
       if (!isTouchDevice.current) return;
-      
+
       const touch = e.changedTouches[0];
       const target = document.elementFromPoint(touch.clientX, touch.clientY);
       const isValidDropTarget = target && (
@@ -152,7 +156,7 @@ export function useCardDrag() {
         target.closest(".center-stack") ||
         target.closest(".nerts-pile")
       );
-      
+
       if (isValidDropTarget && target) {
         // Forward touch-drop to the element under finger.
         // React handlers on stacks/center already implement drop validation.
@@ -170,25 +174,25 @@ export function useCardDrag() {
         cancelDrag();
       }
     };
-    
+
     const handleMouseDown = (e: MouseEvent) => {
       // Only handle mouse events on non-touch devices
       if (isTouchDevice.current) return;
-      
+
       // If clicking while dragging and not over a card/stack, cancel the drag
       // This allows clicking on empty space to cancel an active drag
       // But don't cancel if clicking on a card (might be starting a new drag)
       setDragState((prev) => {
         if (!prev.isDragging || e.button !== 0) return prev;
-        
+
         const target = e.target as HTMLElement;
         // Check if clicking on a card or stack area
-        const isCardOrStack = target.closest(".card-img") || 
-                              target.closest(".personal-stack") ||
-                              target.closest(".center-stack") ||
-                              target.closest(".nerts-pile") ||
-                              target.closest(".stack-fan");
-        
+        const isCardOrStack = target.closest(".card-img") ||
+          target.closest(".personal-stack") ||
+          target.closest(".center-stack") ||
+          target.closest(".nerts-pile") ||
+          target.closest(".stack-fan");
+
         // Only cancel if clicking on empty space (not on a card/stack)
         if (!isCardOrStack) {
           // Clicking on empty space - cancel drag
@@ -198,12 +202,12 @@ export function useCardDrag() {
             element.style.transform = "";
             element.style.opacity = "1";
             element.style.zIndex = "";
-            
+
             setTimeout(() => {
               element.style.transition = "";
             }, 300);
           }
-          
+
           return {
             isDragging: false,
             payload: null,
@@ -214,7 +218,7 @@ export function useCardDrag() {
             originalPosition: null,
           };
         }
-        
+
         return prev;
       });
     };
@@ -250,11 +254,11 @@ export function useCardDrag() {
       const container = floatingCardRef.current;
       const cardWidth = container.offsetWidth || 88;
       const cardHeight = container.offsetHeight || 123;
-      
+
       // Calculate number of cards in stack
       const cardCount = dragState.payload?.subCards?.length || 1;
       const totalHeight = cardHeight + (cardCount - 1) * CARD_STACK_OFFSET;
-      
+
       // Center the stack on the cursor
       container.style.left = `${dragState.mouseX - cardWidth / 2}px`;
       container.style.top = `${dragState.mouseY - totalHeight / 2}px`;
