@@ -100,7 +100,9 @@ function GameBoardContent({
             </div>
           )}
           {has_multiplayer && (
-            <span className={`status ${gameState.status}`}>{gameState.status}</span>
+            <span className={`status ${gameState.status}`}>
+              {gameState.status}
+            </span>
           )}
           {gameState.winner_id && (
             <span className="winner">Winner: Player {gameState.winner_id}</span>
