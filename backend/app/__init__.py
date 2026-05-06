@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -36,6 +36,10 @@ def create_app():
     # Register socketio events
     from app.websocket import register_socketio_events
     register_socketio_events(socketio)
+
+    @app.route('/', methods=['GET'])
+    def home():
+        return jsonify({'message': 'Nerts backend is up'}), 200
 
     return app
 

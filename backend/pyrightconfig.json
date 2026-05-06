@@ -1,0 +1,15 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "include": [
+    "app",
+    "tests",
+    "run.py",
+    "setup_db.py"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ]
+}

@@ -17,8 +17,8 @@ class Game(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)  # Player who created the room
     name = db.Column(db.String(100), nullable=True)  # Custom room name
     game_state = db.Column(JSON, nullable=False, default=dict)  # Stores full game state
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(tz="UTC"))
+    updated_at = db.Column(db.DateTime, default=datetime.now(tz="UTC"), onupdate=datetime.now(tz="UTC"))
 
     # Relationships
     game_players = relationship('GamePlayer', back_populates='game', cascade='all, delete-orphan', order_by='GamePlayer.position')
@@ -43,7 +43,7 @@ class Game(db.Model):
 
     def __repr__(self):
         return f'<Game {self.id} - {self.status}>'
-
+utcnow
 
 class GamePlayer(db.Model):
     """Join table for players in games with their positions and scores"""
@@ -59,7 +59,7 @@ class GamePlayer(db.Model):
 
     # Relationships
     game = relationship('Game', back_populates='game_players')
-    player = relationship('Player', back_populates='game_players')
+    player = relationship('Player', back_populates='game_participations')
 
     # Unique constraint: one player per position per game
     __table_args__ = (db.UniqueConstraint('game_id', 'position', name='unique_game_position'),)
