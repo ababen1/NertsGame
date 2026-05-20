@@ -1,97 +1,134 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import GameLobby from "./components/GameLobby";
 import GameBoard from "./components/GameBoard";
 import RoomLobby from "./components/RoomLobby";
 import "./App.css";
 import { getDeviceId } from "./utils/deviceId";
 import { has_multiplayer } from "./utils/constants";
-
-type PlayerProfile = { id: number; username: string; device_id?: string };
+import {
+  getStoredDisplayName,
+  setStoredDisplayName,
+  setActiveRoom,
+  clearActiveRoom,
+  getDisplayNameForRoom,
+  setDisplayNameForRoom,
+} from "./utils/roomSession";
+import { getRoomCodeFromPath, roomPath } from "./utils/roomUrl";
+import { joinRoomByCode } from "./utils/joinRoom";
 
 function App() {
+  const [displayName, setDisplayName] = useState("");
+  const [participantId, setParticipantId] = useState<number | null>(null);
   const [currentGameId, setCurrentGameId] = useState<number | null>(null);
-  const [player, setPlayer] = useState<PlayerProfile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [roomCodeFromUrl, setRoomCodeFromUrl] = useState<string | null>(() =>
+    getRoomCodeFromPath(window.location.pathname),
+  );
+  const [loading, setLoading] = useState(true);
+  const [autoJoining, setAutoJoining] = useState(false);
+  const [showLobby, setShowLobby] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [gameStatus, setGameStatus] = useState<string | null>(null);
 
-  // Load player from device (localStorage) on start
+  const deviceId = getDeviceId();
+
+  useEffect(() => {
+    const onPopState = () => {
+      setRoomCodeFromUrl(getRoomCodeFromPath(window.location.pathname));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   useEffect(() => {
     if (!has_multiplayer) {
-      const offlinePlayer = { id: 0, username: "Offline Player" };
-      setPlayer(offlinePlayer);
-      localStorage.setItem("nertsPlayer", JSON.stringify(offlinePlayer));
+      setDisplayName("Offline Player");
+      setParticipantId(0);
       setIsOffline(true);
       setCurrentGameId(1);
-      setLoadingProfile(false);
+      setLoading(false);
       return;
     }
 
-    const saved = localStorage.getItem("nertsPlayer");
-    const load = async () => {
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as PlayerProfile;
-          // Offline profile (id=0) should not hit backend
-          if (parsed.id === 0) {
-            setPlayer(parsed);
-            setIsOffline(true);
-            setCurrentGameId(1);
-            return;
-          }
+    const savedName = getStoredDisplayName();
+    if (savedName) {
+      setDisplayName(savedName);
+    }
 
-          // Try to load by device_id first (new approach)
-          const deviceId = getDeviceId();
-          const res = await fetch(`/api/players/device/${deviceId}`);
-          if (res.ok) {
-            const data = await res.json();
-            setPlayer({
-              id: data.id,
-              username: data.username,
-              device_id: data.device_id,
-            });
-            localStorage.setItem(
-              "nertsPlayer",
-              JSON.stringify({
-                id: data.id,
-                username: data.username,
-                device_id: data.device_id,
-              })
-            );
-            return;
-          }
+    const urlCode = getRoomCodeFromPath(window.location.pathname);
+    if (urlCode) {
+      setRoomCodeFromUrl(urlCode);
+    }
 
-          // Fallback: try loading by ID (for backward compatibility)
-          if (parsed.id) {
-            const resById = await fetch(`/api/players/${parsed.id}`);
-            if (resById.ok) {
-              const data = await resById.json();
-              setPlayer({
-                id: data.id,
-                username: data.username,
-                device_id: data.device_id,
-              });
-              localStorage.setItem(
-                "nertsPlayer",
-                JSON.stringify({
-                  id: data.id,
-                  username: data.username,
-                  device_id: data.device_id,
-                })
-              );
-              return;
-            }
-          }
-        } catch (err) {
-          // ignore and fall back to login
-        }
-        localStorage.removeItem("nertsPlayer");
-      }
-    };
-    load().finally(() => setLoadingProfile(false));
+    setLoading(false);
   }, []);
 
-  // Check game status once when gameId changes (WebSocket will handle updates)
+  const handleEnterRoom = useCallback(
+    (gameId: number, pid: number, code: string, name?: string) => {
+      const resolvedName = name?.trim() || displayName;
+      setCurrentGameId(gameId);
+      setParticipantId(pid);
+      setRoomCode(code);
+      setRoomCodeFromUrl(code);
+      setGameStatus("waiting");
+      setActiveRoom({ gameId, roomCode: code, participantId: pid });
+      if (resolvedName) {
+        setDisplayName(resolvedName);
+        setDisplayNameForRoom(code, resolvedName);
+      }
+      window.history.pushState({}, "", roomPath(code));
+    },
+    [displayName],
+  );
+
+  useEffect(() => {
+    if (!has_multiplayer || loading || isOffline) return;
+
+    const urlCode = roomCodeFromUrl;
+    if (!urlCode) return;
+
+    const savedName = getDisplayNameForRoom(urlCode);
+    if (!savedName) return;
+
+    if (currentGameId && roomCode === urlCode) return;
+
+    let cancelled = false;
+    setAutoJoining(true);
+
+    joinRoomByCode(urlCode, savedName)
+      .then((result) => {
+        if (!cancelled) {
+          handleEnterRoom(
+            result.gameId,
+            result.participantId,
+            result.roomCode,
+            savedName,
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          console.error("Auto-join failed:", err);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAutoJoining(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    loading,
+    roomCodeFromUrl,
+    currentGameId,
+    roomCode,
+    isOffline,
+    handleEnterRoom,
+  ]);
+
   useEffect(() => {
     if (currentGameId && !isOffline) {
       const checkGameStatus = async () => {
@@ -100,151 +137,163 @@ function App() {
           if (response.ok) {
             const game = await response.json();
             setGameStatus(game.status);
+            setRoomCode(game.room_code);
           }
         } catch (error) {
           console.error("Failed to fetch game status:", error);
         }
       };
-      // Only check once on mount - WebSocket will handle status changes
       checkGameStatus();
     }
   }, [currentGameId, isOffline]);
 
+  const handleLeaveRoom = useCallback(() => {
+    setCurrentGameId(null);
+    setParticipantId(null);
+    setRoomCode(null);
+    setGameStatus(null);
+    setShowLobby(false);
+    clearActiveRoom();
+    window.history.pushState({}, "", "/");
+    setRoomCodeFromUrl(null);
+  }, []);
+
+  const handleJoinFromHome = useCallback(
+    async (code: string, name: string) => {
+      const result = await joinRoomByCode(code, name);
+      handleEnterRoom(
+        result.gameId,
+        result.participantId,
+        result.roomCode,
+        name,
+      );
+    },
+    [handleEnterRoom],
+  );
+
+  const handleContinueToLobby = (name: string) => {
+    const trimmed = name.trim();
+    setDisplayName(trimmed);
+    setStoredDisplayName(trimmed);
+    setShowLobby(true);
+  };
+
   const handlePlayOffline = (): void => {
-    const offlinePlayer = { id: 0, username: "Offline Player" };
-    setPlayer(offlinePlayer);
-    localStorage.setItem("nertsPlayer", JSON.stringify(offlinePlayer));
-    setLoadingProfile(false);
-    setCurrentGameId(1);
+    setDisplayName("Offline Player");
+    setParticipantId(0);
     setIsOffline(true);
+    setCurrentGameId(1);
+    setLoading(false);
   };
 
-  const handleLogin = async (username: string) => {
-    setIsOffline(false);
-    const deviceId = getDeviceId();
-    const response = await fetch("/api/players", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, device_id: deviceId }),
-    });
+  const handleRename = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
 
-    if (response.ok) {
-      const playerResp = await response.json();
-      const profile = {
-        id: playerResp.id,
-        username: playerResp.username,
-        device_id: playerResp.device_id,
-      };
-      setPlayer(profile);
-      localStorage.setItem("nertsPlayer", JSON.stringify(profile));
-    } else {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to create player");
-    }
-  };
-
-  const handleRename = async (username: string) => {
     if (isOffline) {
-      // Offline mode: just update local profile
-      const profile = { id: player?.id ?? 0, username };
-      setPlayer(profile);
-      localStorage.setItem("nertsPlayer", JSON.stringify(profile));
+      setDisplayName(trimmed);
+      setStoredDisplayName(trimmed);
       return;
     }
-    if (!player) return;
 
-    // Use device_id endpoint if available, otherwise fall back to ID
-    const deviceId = player.device_id || getDeviceId();
-    const endpoint = deviceId
-      ? `/api/players/device/${deviceId}`
-      : `/api/players/${player.id}`;
+    if (!currentGameId) {
+      setDisplayName(trimmed);
+      setStoredDisplayName(trimmed);
+      return;
+    }
 
-    const response = await fetch(endpoint, {
-      method: "PATCH",
+    const response = await fetch(`/api/games/${currentGameId}/join`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
+      body: JSON.stringify({
+        device_id: deviceId,
+        display_name: trimmed,
+      }),
     });
+
     if (response.ok) {
-      const updated = await response.json();
-      const profile = {
-        id: updated.id,
-        username: updated.username,
-        device_id: updated.device_id,
-      };
-      setPlayer(profile);
-      localStorage.setItem("nertsPlayer", JSON.stringify(profile));
+      setDisplayName(trimmed);
+      setStoredDisplayName(trimmed);
+      if (roomCode) {
+        setDisplayNameForRoom(roomCode, trimmed);
+      }
     } else {
       const error = await response.json();
       throw new Error(error.error || "Failed to update name");
     }
   };
 
-  if (loadingProfile) {
+  if (loading || autoJoining) {
     return (
       <div className="app">
         <div className="login-container">
           <h1>🎮 Nerts Online</h1>
-          <p>Loading player...</p>
+          <p>Loading...</p>
         </div>
       </div>
     );
   }
 
-  if (!player) {
+  if (isOffline) {
+    return (
+      <div className="app">
+        <GameBoard
+          gameId={currentGameId!}
+          playerId={0}
+          deviceId={deviceId}
+          playerName={displayName}
+          onRename={handleRename}
+          onLeaveGame={() => {
+            setIsOffline(false);
+            setCurrentGameId(null);
+            setParticipantId(null);
+          }}
+          isOffline
+        />
+      </div>
+    );
+  }
+
+  if (!currentGameId || participantId === null) {
+    if (showLobby && displayName) {
+      return (
+        <div className="app">
+          <GameLobby displayName={displayName} onJoinGame={handleEnterRoom} />
+        </div>
+      );
+    }
+
     return (
       <div className="app">
         <div className="login-container">
           <h1>🎮 Nerts Online</h1>
-          <LoginForm
-            handlePlayOffline={handlePlayOffline}
-            initialUsername={
-              localStorage.getItem("nertsPlayer")
-                ? JSON.parse(localStorage.getItem("nertsPlayer") as string)
-                    ?.username
-                : ""
+          <HomePage
+            initialRoomCode={roomCodeFromUrl || ""}
+            initialDisplayName={
+              roomCodeFromUrl
+                ? getDisplayNameForRoom(roomCodeFromUrl) ||
+                  getStoredDisplayName()
+                : getStoredDisplayName()
             }
-            onLogin={async (username) => {
-              try {
-                await handleLogin(username);
-              } catch (err: any) {
-                alert(err.message || "Failed to start");
-              }
-            }}
+            onJoinRoom={handleJoinFromHome}
+            onContinueToLobby={handleContinueToLobby}
+            onPlayOffline={handlePlayOffline}
           />
         </div>
       </div>
     );
   }
 
-  if (!currentGameId) {
-    return (
-      <div className="app">
-        <GameLobby
-          playerId={player.id}
-          onJoinGame={async (gameId) => {
-            setCurrentGameId(gameId);
-            // Set initial status - WebSocket will update it when we join
-            setGameStatus("waiting");
-          }}
-        />
-      </div>
-    );
-  }
-
-  // Show RoomLobby for waiting games, GameBoard for active games
-  if (gameStatus === "waiting" && !isOffline) {
+  if (gameStatus === "waiting") {
     return (
       <div className="app">
         <RoomLobby
           gameId={currentGameId}
-          playerId={player.id}
-          onLeaveRoom={() => {
-            setCurrentGameId(null);
-            setGameStatus(null);
-          }}
-          onGameStart={() => {
-            setGameStatus("active");
-          }}
+          participantId={participantId}
+          deviceId={deviceId}
+          roomCode={roomCode}
+          onLeaveRoom={handleLeaveRoom}
+          onGameStart={() => setGameStatus("active")}
         />
       </div>
     );
@@ -254,65 +303,104 @@ function App() {
     <div className="app">
       <GameBoard
         gameId={currentGameId}
-        playerId={player.id}
-        playerName={player.username}
+        playerId={participantId}
+        deviceId={deviceId}
+        playerName={displayName}
         onRename={handleRename}
-        onLeaveGame={() => {
-          if (isOffline || player.id === 0) {
-            setPlayer(null);
-            setIsOffline(false);
-            localStorage.removeItem("nertsPlayer");
-          }
-          setCurrentGameId(null);
-          setGameStatus(null);
-        }}
-        isOffline={isOffline || player.id === 0}
+        onLeaveGame={handleLeaveRoom}
+        isOffline={false}
       />
     </div>
   );
 }
 
-function LoginForm({
-  onLogin,
-  initialUsername,
-  handlePlayOffline,
+function HomePage({
+  initialRoomCode,
+  initialDisplayName,
+  onJoinRoom,
+  onContinueToLobby,
+  onPlayOffline,
 }: {
-  onLogin: (username: string) => void | Promise<void>;
-  initialUsername?: string;
-  handlePlayOffline: () => void;
+  initialRoomCode: string;
+  initialDisplayName: string;
+  onJoinRoom: (roomCode: string, displayName: string) => Promise<void>;
+  onContinueToLobby: (displayName: string) => void;
+  onPlayOffline: () => void;
 }) {
-  const [username, setUsername] = useState(initialUsername || "");
+  const [roomCode, setRoomCode] = useState(initialRoomCode);
+  const [displayName, setDisplayName] = useState(initialDisplayName);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    setRoomCode(initialRoomCode);
+  }, [initialRoomCode]);
+
+  useEffect(() => {
+    setDisplayName(initialDisplayName);
+  }, [initialDisplayName]);
+
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    const code = roomCode.trim();
+    const name = displayName.trim();
+    if (!code || !name) return;
 
+    setLoading(true);
+    setError(null);
     try {
-      await onLogin(username);
-    } catch (error: any) {
-      alert(error?.message || "Error connecting to server");
+      await onJoinRoom(code, name);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to join room");
     } finally {
       setLoading(false);
     }
   };
+
+  const handleContinue = () => {
+    const name = displayName.trim();
+    if (!name) return;
+    onContinueToLobby(name);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="login-form">
+    <form onSubmit={handleJoin} className="login-form">
+      <p>Enter a room code to join, or continue to browse public rooms.</p>
+      <label htmlFor="room-code">Room code</label>
       <input
+        id="room-code"
         type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        required
+        placeholder="Room code"
+        value={roomCode}
+        onChange={(e) => setRoomCode(e.target.value)}
+        maxLength={80}
       />
-      <button type="submit" disabled={loading}>
-        {loading ? "Creating..." : "Start Playing"}
+      <label htmlFor="display-name">Display name</label>
+      <input
+        id="display-name"
+        type="text"
+        placeholder="Display name"
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+        required
+        maxLength={80}
+      />
+      {error && <p className="home-error">{error}</p>}
+      <button
+        type="submit"
+        disabled={loading || !roomCode.trim() || !displayName.trim()}
+      >
+        {loading ? "Joining..." : "Join room"}
       </button>
       <button
         type="button"
-        className="secondary"
-        onClick={() => handlePlayOffline()}
+        className="primary"
+        disabled={!displayName.trim()}
+        onClick={handleContinue}
       >
+        View public rooms
+      </button>
+      <button type="button" className="secondary" onClick={onPlayOffline}>
         Play single-player (offline)
       </button>
     </form>

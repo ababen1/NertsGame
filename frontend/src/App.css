@@ -69,3 +69,16 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
+
+.login-form label {
+  display: block;
+  margin-bottom: -4px;
+  text-align: left;
+  font-size: 14px;
+  color: #555;
+}
+
+.home-error {
+  color: #e74c3c;
+  margin: 0;
+}

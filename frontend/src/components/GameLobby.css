@@ -132,3 +132,40 @@
   font-weight: 600;
 }
 
+.lobby-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.lobby-user {
+  width: 100%;
+  margin: 0;
+  color: #666;
+}
+
+.create-game-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.private-room-toggle {
+  font-size: 14px;
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-link {
+  width: 100%;
+  margin: 8px 0 0;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.share-link code {
+  font-size: 12px;
+}
+

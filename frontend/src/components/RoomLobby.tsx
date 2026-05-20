@@ -1,35 +1,38 @@
 import { useState, useEffect } from "react";
 import { useGameSocket } from "../hooks/useGameSocket";
+import { roomShareUrl } from "../utils/roomUrl";
 import "./RoomLobby.css";
 
 interface RoomLobbyProps {
   gameId: number;
-  playerId: number;
+  participantId: number;
+  deviceId: string;
+  roomCode: string | null;
   onLeaveRoom: () => void;
   onGameStart: () => void;
 }
 
 export default function RoomLobby({
   gameId,
-  playerId,
+  participantId,
+  deviceId,
+  roomCode,
   onLeaveRoom,
   onGameStart,
 }: RoomLobbyProps) {
   const { lobbyState, setReady, connected, gameState } = useGameSocket(
     gameId,
-    playerId,
+    deviceId,
+    participantId,
     true
   );
 
-  // If game state is received, the game has started
   useEffect(() => {
     if (gameState) {
       onGameStart();
     }
   }, [gameState, onGameStart]);
-  
-  // Also listen for game status changes via parent component
-  // This will be handled by the parent when gameState changes
+
   const [roomName, setRoomName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
@@ -37,15 +40,30 @@ export default function RoomLobby({
 
   useEffect(() => {
     if (lobbyState) {
-      setRoomName(lobbyState.name || `Game #${lobbyState.game_id}`);
+      setRoomName(lobbyState.name || `Room ${lobbyState.room_code || gameId}`);
     }
-  }, [lobbyState]);
+  }, [lobbyState, gameId]);
 
-  const isOwner = lobbyState?.owner_id === playerId;
+  const isOwner = lobbyState?.owner_id === participantId;
   const allReady =
     lobbyState &&
     lobbyState.players.length >= 2 &&
     lobbyState.players.every((p) => p.is_ready);
+
+  const shareUrl =
+    roomCode || lobbyState?.room_code
+      ? roomShareUrl(roomCode || lobbyState!.room_code!)
+      : null;
+
+  const handleCopyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Room link copied");
+    } catch {
+      prompt("Copy room link:", shareUrl);
+    }
+  };
 
   const handleSaveName = async () => {
     if (!isOwner || !lobbyState) return;
@@ -54,28 +72,30 @@ export default function RoomLobby({
       const response = await fetch(`/api/games/${gameId}/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player_id: playerId, name: roomName }),
+        body: JSON.stringify({ device_id: deviceId, name: roomName }),
       });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to update room name");
       }
       setEditingName(false);
-    } catch (error: any) {
-      alert(error.message || "Failed to update room name");
+    } catch (error: unknown) {
+      alert(
+        error instanceof Error ? error.message : "Failed to update room name"
+      );
     } finally {
       setSavingName(false);
     }
   };
 
-  const handleKickPlayer = async (targetPlayerId: number) => {
+  const handleKickPlayer = async (targetDeviceId: string) => {
     if (!isOwner) return;
+    const target = lobbyState?.players.find(
+      (p) => p.device_id === targetDeviceId
+    );
     if (
       !confirm(
-        `Are you sure you want to kick ${
-          lobbyState?.players.find((p) => p.player_id === targetPlayerId)
-            ?.username || "this player"
-        }?`
+        `Kick ${target?.display_name || target?.username || "this player"}?`
       )
     ) {
       return;
@@ -85,16 +105,16 @@ export default function RoomLobby({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          player_id: playerId,
-          target_player_id: targetPlayerId,
+          device_id: deviceId,
+          target_device_id: targetDeviceId,
         }),
       });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to kick player");
       }
-    } catch (error: any) {
-      alert(error.message || "Failed to kick player");
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Failed to kick player");
     }
   };
 
@@ -105,15 +125,15 @@ export default function RoomLobby({
       const response = await fetch(`/api/games/${gameId}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player_id: playerId }),
+        body: JSON.stringify({ device_id: deviceId }),
       });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to start game");
       }
       onGameStart();
-    } catch (error: any) {
-      alert(error.message || "Failed to start game");
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Failed to start game");
     } finally {
       setStartingGame(false);
     }
@@ -162,7 +182,10 @@ export default function RoomLobby({
               <button
                 onClick={() => {
                   setEditingName(false);
-                  setRoomName(lobbyState.name || `Game #${lobbyState.game_id}`);
+                  setRoomName(
+                    lobbyState.name ||
+                      `Room ${lobbyState.room_code || gameId}`
+                  );
                 }}
                 className="cancel-name-btn"
               >
@@ -173,9 +196,16 @@ export default function RoomLobby({
             <h1>{roomName}</h1>
           )}
         </div>
-        <button onClick={onLeaveRoom} className="leave-room-btn">
-          Leave Room
-        </button>
+        <div className="room-header-actions">
+          {shareUrl && (
+            <button type="button" onClick={handleCopyLink} className="secondary">
+              Copy invite link
+            </button>
+          )}
+          <button onClick={onLeaveRoom} className="leave-room-btn">
+            Leave Room
+          </button>
+        </div>
       </div>
 
       <div className="room-lobby-content">
@@ -183,7 +213,11 @@ export default function RoomLobby({
           <h2>Players ({lobbyState.players.length} / 6)</h2>
           <div className="players-grid">
             {lobbyState.players.map((player) => {
-              const isCurrentPlayer = player.player_id === playerId;
+              const label =
+                player.display_name ||
+                player.username ||
+                `Player ${player.player_id}`;
+              const isCurrentPlayer = player.player_id === participantId;
               const isPlayerOwner = player.player_id === lobbyState.owner_id;
               return (
                 <div
@@ -194,7 +228,7 @@ export default function RoomLobby({
                 >
                   <div className="player-info">
                     <span className="player-name">
-                      {player.username || `Player ${player.player_id}`}
+                      {label}
                       {isPlayerOwner && (
                         <span className="owner-badge">👑 Owner</span>
                       )}
@@ -221,7 +255,7 @@ export default function RoomLobby({
                     !isCurrentPlayer &&
                     player.player_id !== lobbyState.owner_id && (
                       <button
-                        onClick={() => handleKickPlayer(player.player_id)}
+                        onClick={() => handleKickPlayer(player.device_id)}
                         className="kick-btn"
                       >
                         Kick
@@ -243,8 +277,8 @@ export default function RoomLobby({
               {startingGame
                 ? "Starting..."
                 : allReady
-                ? "Start Game"
-                : "Waiting for all players to be ready"}
+                  ? "Start Game"
+                  : "Waiting for all players to be ready"}
             </button>
             {!allReady && (
               <p className="ready-status-info">

@@ -1,32 +1,48 @@
 from app import db
-from datetime import datetime
+from app.time_utils import utc_now
 from sqlalchemy.orm import relationship
 from sqlalchemy import JSON
-import json
 
 
 class Game(db.Model):
-    """Game model representing a Nerts match"""
+    """Game model representing a Nerts match (room)"""
     __tablename__ = 'games'
 
     id = db.Column(db.Integer, primary_key=True)
+    room_code = db.Column(db.String(12), unique=True, nullable=False, index=True)
+    is_private = db.Column(db.Boolean, default=False, nullable=False)
     status = db.Column(db.String(20), default='waiting', nullable=False)  # waiting, active, finished
     max_players = db.Column(db.Integer, default=6, nullable=False)
     current_round = db.Column(db.Integer, default=1, nullable=False)
-    winner_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
-    owner_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)  # Player who created the room
-    name = db.Column(db.String(100), nullable=True)  # Custom room name
-    game_state = db.Column(JSON, nullable=False, default=dict)  # Stores full game state
-    created_at = db.Column(db.DateTime, default=datetime.now(tz="UTC"))
-    updated_at = db.Column(db.DateTime, default=datetime.now(tz="UTC"), onupdate=datetime.now(tz="UTC"))
+    winner_id = db.Column(
+        db.Integer,
+        db.ForeignKey('game_players.id', use_alter=True, name='fk_games_winner_id'),
+        nullable=True,
+    )
+    owner_id = db.Column(
+        db.Integer,
+        db.ForeignKey('game_players.id', use_alter=True, name='fk_games_owner_id'),
+        nullable=True,
+    )
+    name = db.Column(db.String(100), nullable=True)
+    game_state = db.Column(JSON, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
-    # Relationships
-    game_players = relationship('GamePlayer', back_populates='game', cascade='all, delete-orphan', order_by='GamePlayer.position')
+    game_players = relationship(
+        'GamePlayer',
+        back_populates='game',
+        cascade='all, delete-orphan',
+        order_by='GamePlayer.position',
+        foreign_keys='GamePlayer.game_id',
+    )
     moves = relationship('Move', back_populates='game', cascade='all, delete-orphan')
 
     def to_dict(self, include_state=False):
         data = {
             'id': self.id,
+            'room_code': self.room_code,
+            'is_private': self.is_private,
             'status': self.status,
             'max_players': self.max_players,
             'current_round': self.current_round,
@@ -43,38 +59,40 @@ class Game(db.Model):
 
     def __repr__(self):
         return f'<Game {self.id} - {self.status}>'
-utcnow
+
 
 class GamePlayer(db.Model):
-    """Join table for players in games with their positions and scores"""
+    """Room participant (player exists only within this game)"""
     __tablename__ = 'game_players'
 
     id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(db.Integer, db.ForeignKey('games.id'), nullable=False)
-    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
-    position = db.Column(db.Integer, nullable=False)  # 0-5, player's position in the game
+    device_id = db.Column(db.String(255), nullable=False, index=True)
+    display_name = db.Column(db.String(80), nullable=False)
+    position = db.Column(db.Integer, nullable=False)
     score = db.Column(db.Integer, default=0, nullable=False)
     is_ready = db.Column(db.Boolean, default=False, nullable=False)
-    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    joined_at = db.Column(db.DateTime, default=utc_now)
 
-    # Relationships
-    game = relationship('Game', back_populates='game_players')
-    player = relationship('Player', back_populates='game_participations')
+    game = relationship('Game', back_populates='game_players', foreign_keys=[game_id])
 
-    # Unique constraint: one player per position per game
-    __table_args__ = (db.UniqueConstraint('game_id', 'position', name='unique_game_position'),)
+    __table_args__ = (
+        db.UniqueConstraint('game_id', 'position', name='unique_game_position'),
+        db.UniqueConstraint('game_id', 'device_id', name='unique_game_device'),
+    )
 
     def to_dict(self):
         return {
             'id': self.id,
             'game_id': self.game_id,
-            'player_id': self.player_id,
+            'device_id': self.device_id,
+            'display_name': self.display_name,
             'position': self.position,
             'score': self.score,
             'is_ready': self.is_ready,
-            'player': self.player.to_dict() if self.player else None,
+            # Legacy field: participant id used by game engine / websocket clients
+            'player_id': self.id,
         }
 
     def __repr__(self):
-        return f'<GamePlayer game={self.game_id} player={self.player_id} pos={self.position}>'
-
+        return f'<GamePlayer game={self.game_id} device={self.device_id} pos={self.position}>'

@@ -5,7 +5,7 @@
 export const CARD_STACK_OFFSET = 20;
 
 // Global feature flag for multiplayer support.
-export const has_multiplayer = false;
+export const has_multiplayer = true;
 
 // Local toggle for a deterministic easy practice deal.
 // Effective only in dev builds; production always forces real shuffle.

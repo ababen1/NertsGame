@@ -15,6 +15,7 @@ import { has_multiplayer } from "../utils/constants";
 interface GameBoardProps {
   gameId: number;
   playerId: number;
+  deviceId?: string;
   playerName: string;
   onRename: (username: string) => Promise<void> | void;
   onLeaveGame: () => void;
@@ -24,12 +25,13 @@ interface GameBoardProps {
 function GameBoardContent({
   gameId,
   playerId,
+  deviceId = "",
   playerName,
   onRename,
   onLeaveGame,
   isOffline,
 }: GameBoardProps) {
-  const online = useGameSocket(gameId, playerId, !isOffline);
+  const online = useGameSocket(gameId, deviceId, playerId, !isOffline);
   const practice = useOfflinePractice(playerId, playerName);
   const gameState = isOffline ? practice.gameState : online.gameState;
   const connected = isOffline ? true : online.connected;
