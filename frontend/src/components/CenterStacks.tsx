@@ -5,9 +5,7 @@ import "./CenterStacks.css";
 import { useCardDragContext } from "../contexts/CardDragContext";
 
 interface CenterStacksProps {
-  centerStacks: {
-    [key in Suit]: Card[];
-  };
+  centerStacks: Card[][];
   onCardDrop: (payload: DragPayload | null) => void;
 }
 
@@ -16,7 +14,7 @@ export default function CenterStacks({
   onCardDrop,
 }: CenterStacksProps) {
   const { dragState, cancelDrag, completeDrag } = useCardDragContext();
-  type DragPayloadWithTarget = DragPayload & { targetSuit?: Suit };
+  type DragPayloadWithTarget = DragPayload & { targetStackIndex?: number };
 
   const parsePayload = (e: React.DragEvent) => {
     try {
@@ -26,19 +24,6 @@ export default function CenterStacks({
     } catch {
       return null;
     }
-  };
-
-  const getTargetSuit = (
-    card: Card,
-    cards: Card[],
-    slotSuit: Suit
-  ): Suit | null => {
-    if (cards.length === 0) {
-      // Empty center slots only accept an ace.
-      return card.rank === 1 ? slotSuit : null;
-    }
-    // Non-empty slot: route to this physical slot key.
-    return slotSuit;
   };
 
   const buildCenterDropTarget = (
@@ -54,110 +39,73 @@ export default function CenterStacks({
     return { type: "center", stack: centerStack };
   };
 
-  const addTargetSuit = (
+  const addTargetStackIndex = (
     payload: DragPayload,
-    targetSuit: Suit
+    stackIndex: number
   ): DragPayloadWithTarget => ({
     ...payload,
-    targetSuit,
+    targetStackIndex: stackIndex,
   });
 
-  // Get all stacks (including empty ones) - show 4 slots
-  const allStacks = (Object.keys(centerStacks) as Suit[]).map((suit) => ({
-    suit,
-    cards: centerStacks[suit],
-  }));
+  const tryDropOnStack = (
+    payload: DragPayload,
+    cards: Card[],
+    stackIndex: number
+  ): boolean => {
+    const card = payload.card;
+    if (!card) return false;
+
+    if (cards.length === 0 && card.rank !== 1) {
+      return false;
+    }
+
+    const stackSuit = cards.length > 0 ? cards[cards.length - 1].suit : undefined;
+    const target = buildCenterDropTarget(card, cards, stackSuit);
+    if (!isDroppable(payload, target)) {
+      return false;
+    }
+
+    onCardDrop(addTargetStackIndex(payload, stackIndex));
+    return true;
+  };
 
   return (
     <div className="center-stacks">
       <div className="stacks-container">
-        {allStacks.map(({ suit, cards }) => {
+        {centerStacks.map((cards, stackIndex) => {
           const topCard = cards.length > 0 ? cards[cards.length - 1] : null;
-          // Determine the stack's suit - use first card's suit if stack has cards, otherwise undefined
-          const stackSuit = topCard ? topCard.suit : undefined;
 
           return (
             <div
-              key={suit}
+              key={stackIndex}
               className="center-stack"
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
 
-                // Handle custom drag (click-to-drag)
                 if (dragState.isDragging && dragState.payload) {
-                  const customPayload = dragState.payload;
-                  const card = customPayload.card;
-
-                  const targetSuit = getTargetSuit(card, cards, suit);
-                  if (!targetSuit) {
+                  if (!tryDropOnStack(dragState.payload, cards, stackIndex)) {
                     cancelDrag();
                     return;
                   }
-
-                  const target = buildCenterDropTarget(card, cards, stackSuit);
-                  if (!isDroppable(customPayload, target)) {
-                    // Invalid drop - return card to original position
-                    cancelDrag();
-                    return;
-                  }
-
-                  // Valid drop - use the slot's suit key (where it was dropped) to update the correct stack.
-                  const payloadWithTarget = addTargetSuit(customPayload, targetSuit);
-                  onCardDrop(payloadWithTarget);
                   completeDrag();
                   return;
                 }
 
-                // Handle HTML5 drag (fallback)
                 const payload = parsePayload(e);
-                if (!payload) {
-                  return;
-                }
-                const card = payload.card;
-
-                const targetSuit = getTargetSuit(card, cards, suit);
-                if (!targetSuit) {
-                  return;
-                }
-
-                const target = buildCenterDropTarget(card, cards, stackSuit);
-                if (!isDroppable(payload, target)) {
-                  // Invalid drop - ignore it (card stays in place)
-                  return;
-                }
-
-                // Add targetSuit for the handler - use slot's suit key.
-                const payloadWithTarget = addTargetSuit(payload, targetSuit);
-                onCardDrop(payloadWithTarget);
+                if (!payload) return;
+                tryDropOnStack(payload, cards, stackIndex);
               }}
               onMouseUp={() => {
-                // Handle drop on mouse up for click-to-drag (desktop only)
                 if (dragState.isDragging && dragState.payload) {
-                  // This handler is bound to this specific center stack, so treat it as drop target.
-                  const customPayload = dragState.payload;
-                  const card = customPayload.card;
-
-                  const targetSuit = getTargetSuit(card, cards, suit);
-                  if (!targetSuit) {
+                  if (!tryDropOnStack(dragState.payload, cards, stackIndex)) {
                     cancelDrag();
                     return;
                   }
-
-                  const dropTarget = buildCenterDropTarget(card, cards, stackSuit);
-                  if (!isDroppable(customPayload, dropTarget)) {
-                    // Invalid drop - return card to original position
-                    cancelDrag();
-                    return;
-                  }
-
-                  // Valid drop - use slot's suit key.
-                  const payloadWithTarget = addTargetSuit(customPayload, targetSuit);
-                  onCardDrop(payloadWithTarget);
                   completeDrag();
                 }
               }}
-              data-suit={suit}
+              data-stack-index={stackIndex}
             >
               <div className="stack-cards">
                 {topCard ? (

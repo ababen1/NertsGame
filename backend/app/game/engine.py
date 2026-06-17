@@ -72,6 +72,11 @@ class GameEngine:
     """Core game logic engine for Nerts"""
     
     WINNING_SCORE = 100
+    STACKS_PER_PLAYER = 4
+    
+    @staticmethod
+    def center_stack_count(num_players: int) -> int:
+        return GameEngine.STACKS_PER_PLAYER * num_players
     
     def __init__(self, game_id: int, player_ids: List[int]):
         self.game_id = game_id
@@ -80,10 +85,10 @@ class GameEngine:
         self.winner_id: Optional[int] = None
         self.first_nerts_caller: Optional[int] = None  # Track who called nerts first in current round
         
-        # Center shared stacks (4 stacks, one per suit, A→K)
-        self.center_stacks: Dict[Suit, List[Card]] = {
-            suit: [] for suit in Suit
-        }
+        # Center shared stacks: 4 slots per player (A→K per physical pile)
+        self.center_stacks: List[List[Card]] = [
+            [] for _ in range(self.center_stack_count(len(player_ids)))
+        ]
         
         # Player states
         self.players: Dict[int, PlayerState] = {}
@@ -95,7 +100,9 @@ class GameEngine:
         self.status = 'active'
         
         # Reset center stacks
-        self.center_stacks = {suit: [] for suit in Suit}
+        self.center_stacks = [
+            [] for _ in range(self.center_stack_count(len(self.players)))
+        ]
         
         # Reset first nerts caller for new round
         self.first_nerts_caller = None
@@ -200,15 +207,19 @@ class GameEngine:
         except ValueError:
             return False
     
-    def play_card_to_center(self, player_id: int, card: Card, suit: Suit) -> Tuple[bool, str]:
-        """Play a card to a center stack. Returns (success, message)"""
+    def play_card_to_center(self, player_id: int, card: Card, stack_index: int) -> Tuple[bool, str]:
+        """Play a card to a center stack slot. Returns (success, message)"""
         if player_id not in self.players:
             return False, "Invalid player"
         
-        stack = self.center_stacks[suit]
-        top_card = stack[-1] if stack else None
+        if stack_index < 0 or stack_index >= len(self.center_stacks):
+            return False, "Invalid stack index"
         
-        if not card.can_play_on_center_stack(top_card, suit):
+        stack = self.center_stacks[stack_index]
+        top_card = stack[-1] if stack else None
+        validation_suit = top_card.suit if top_card else card.suit
+        
+        if not card.can_play_on_center_stack(top_card, validation_suit):
             return False, "Invalid move: card cannot be played on this center stack"
         
         # Remove card from player's area
@@ -370,10 +381,10 @@ class GameEngine:
             'current_round': self.current_round,
             'status': self.status,
             'winner_id': self.winner_id,
-            'center_stacks': {
-                suit.value: [card.to_dict() for card in stack]
-                for suit, stack in self.center_stacks.items()
-            },
+            'center_stacks': [
+                [card.to_dict() for card in stack]
+                for stack in self.center_stacks
+            ],
             'players': {
                 player_id: player.to_dict(include_private=(include_private and player_id == requesting_player_id))
                 for player_id, player in self.players.items()
@@ -388,10 +399,10 @@ class GameEngine:
             'status': self.status,
             'winner_id': self.winner_id,
             'first_nerts_caller': self.first_nerts_caller,
-            'center_stacks': {
-                suit.value: [card.to_dict() for card in stack]
-                for suit, stack in self.center_stacks.items()
-            },
+            'center_stacks': [
+                [card.to_dict() for card in stack]
+                for stack in self.center_stacks
+            ],
             'players': {
                 player_id: player.to_dict(include_private=True)
                 for player_id, player in self.players.items()
@@ -409,10 +420,22 @@ class GameEngine:
         engine.winner_id = data.get('winner_id')
         engine.first_nerts_caller = data.get('first_nerts_caller')
         
-        # Restore center stacks
-        for suit_str, cards_data in data['center_stacks'].items():
-            suit = Suit(suit_str)
-            engine.center_stacks[suit] = [Card.from_dict(c) for c in cards_data]
+        # Restore center stacks (list format, or legacy suit-keyed dict)
+        center_data = data['center_stacks']
+        expected = engine.center_stack_count(len(player_ids))
+        if isinstance(center_data, list):
+            engine.center_stacks = [
+                [Card.from_dict(c) for c in stack] for stack in center_data
+            ]
+        else:
+            engine.center_stacks = [[] for _ in range(expected)]
+            for i, suit in enumerate(Suit):
+                cards_data = center_data.get(suit.value, [])
+                if i < len(engine.center_stacks):
+                    engine.center_stacks[i] = [Card.from_dict(c) for c in cards_data]
+        while len(engine.center_stacks) < expected:
+            engine.center_stacks.append([])
+        engine.center_stacks = engine.center_stacks[:expected]
         
         # Restore player states
         for player_id_str, player_data in data['players'].items():

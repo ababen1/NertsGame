@@ -30,9 +30,7 @@ export interface GameState {
   current_round: number;
   status: "waiting" | "active" | "finished";
   winner_id: number | null;
-  center_stacks: {
-    [key in Suit]: Card[];
-  };
+  center_stacks: Card[][];
   players: {
     [playerId: string]: PlayerState;
   };

@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify
 from app import db, socketio
 from app.models.game import Game, GamePlayer
 from app.game.engine import GameEngine
-from app.websocket import broadcast_lobby_update
+from app.websocket import broadcast_lobby_update, broadcast_game_state
+from app.game.cache import start_session, persist_game_end
 from app.room_code import assign_unique_room_code
 
 games_bp = Blueprint('games', __name__)
@@ -236,12 +237,11 @@ def start_game(game_id):
     engine.start_round()
 
     game.status = 'active'
-    game.game_state = engine.to_dict()
+    game.game_state = {}
+    game.current_round = engine.current_round
+    start_session(game, engine)
     db.session.commit()
 
-    room = f'game_{game_id}'
-    for gp in game.game_players:
-        player_state = engine.get_game_state(requesting_player_id=gp.id)
-        socketio.emit('game_state', player_state, room=room)
+    broadcast_game_state(socketio, game_id, engine)
 
     return jsonify(engine.get_game_state()), 200

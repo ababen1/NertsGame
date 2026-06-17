@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
-import { GameState, LobbyState } from "../types/game";
+import { Card, GameState, LobbyState } from "../types/game";
+import {
+  applyDrawDeck,
+  applyMoveStack,
+  applyPlayCard,
+} from "../utils/gameStateMutations";
 
 export function useGameSocket(
   gameId: number,
@@ -13,6 +18,7 @@ export function useGameSocket(
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
   const [connected, setConnected] = useState(false);
   const lobbyStateRef = useRef<LobbyState | null>(null);
+  const serverStateRef = useRef<GameState | null>(null);
 
   useEffect(() => {
     lobbyStateRef.current = lobbyState;
@@ -23,12 +29,13 @@ export function useGameSocket(
       setSocket(null);
       setConnected(false);
       setGameState(null);
+      serverStateRef.current = null;
       return;
     }
 
-    const newSocket = io("http://localhost:5000", {
-      transports: ["polling", "websocket"],
-      upgrade: true,
+    const newSocket = io({
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
     });
 
     newSocket.on("connect", () => {
@@ -50,6 +57,7 @@ export function useGameSocket(
     newSocket.on("lobby_state", (state: LobbyState) => {
       setLobbyState(state);
       setGameState(null);
+      serverStateRef.current = null;
     });
 
     newSocket.on("lobby_update", (state: LobbyState) => {
@@ -57,6 +65,7 @@ export function useGameSocket(
     });
 
     newSocket.on("game_state", (state: GameState) => {
+      serverStateRef.current = state;
       setGameState(state);
       setLobbyState(null);
     });
@@ -67,7 +76,9 @@ export function useGameSocket(
 
     newSocket.on("error", (error: { message: string }) => {
       console.error("Socket error:", error.message);
-      alert(error.message);
+      if (serverStateRef.current) {
+        setGameState(serverStateRef.current);
+      }
     });
 
     setSocket(newSocket);
@@ -77,14 +88,32 @@ export function useGameSocket(
     };
   }, [gameId, deviceId, enabled]);
 
+  const rollback = useCallback(() => {
+    if (serverStateRef.current) {
+      setGameState(serverStateRef.current);
+    }
+  }, []);
+
   const drawDeck = useCallback(() => {
+    setGameState((prev) => {
+      if (!prev) return prev;
+      return applyDrawDeck(prev, participantId) ?? prev;
+    });
     if (socket) {
       socket.emit("draw_deck", { game_id: gameId, device_id: deviceId });
     }
-  }, [socket, gameId, deviceId]);
+  }, [socket, gameId, deviceId, participantId]);
 
   const playCard = useCallback(
-    (card: unknown, targetType: "center" | "personal", target: string | number) => {
+    (
+      card: Card,
+      targetType: "center" | "personal",
+      target: string | number
+    ) => {
+      setGameState((prev) => {
+        if (!prev) return prev;
+        return applyPlayCard(prev, participantId, card, targetType, target) ?? prev;
+      });
       if (socket) {
         socket.emit("play_card", {
           game_id: gameId,
@@ -95,7 +124,7 @@ export function useGameSocket(
         });
       }
     },
-    [socket, gameId, deviceId]
+    [socket, gameId, deviceId, participantId]
   );
 
   const callNerts = useCallback(() => {
@@ -106,6 +135,12 @@ export function useGameSocket(
 
   const moveStack = useCallback(
     (fromStack: number, toStack: number, count: number = 1) => {
+      setGameState((prev) => {
+        if (!prev) return prev;
+        return (
+          applyMoveStack(prev, participantId, fromStack, toStack, count) ?? prev
+        );
+      });
       if (socket) {
         socket.emit("move_stack", {
           game_id: gameId,
@@ -116,7 +151,7 @@ export function useGameSocket(
         });
       }
     },
-    [socket, gameId, deviceId]
+    [socket, gameId, deviceId, participantId]
   );
 
   const setReady = useCallback(async () => {
@@ -164,5 +199,6 @@ export function useGameSocket(
     callNerts,
     moveStack,
     setReady,
+    rollback,
   };
 }

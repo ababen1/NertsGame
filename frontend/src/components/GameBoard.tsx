@@ -9,7 +9,6 @@ import {
   useCardDragContext,
 } from "../contexts/CardDragContext";
 import FloatingCard from "./FloatingCard";
-import { Suit } from "../types/game";
 import { has_multiplayer } from "../utils/constants";
 
 interface GameBoardProps {
@@ -145,12 +144,14 @@ function GameBoardContent({
               return;
             }
             if (payload.card) {
-              // Use targetSuit from payload if available (determined by which stack ace was dropped on)
-              // Otherwise fall back to card's suit
-              const targetSuit =
-                (payload as DragPayload & { targetSuit?: Suit }).targetSuit ||
-                payload.card.suit;
-              playCard(payload.card, "center", targetSuit);
+              const stackIndex = (
+                payload as DragPayload & { targetStackIndex?: number }
+              ).targetStackIndex;
+              if (stackIndex === undefined) {
+                if (dragState.isDragging) cancelDrag();
+                return;
+              }
+              playCard(payload.card, "center", stackIndex);
               if (dragState.isDragging) {
                 completeDrag();
               }
